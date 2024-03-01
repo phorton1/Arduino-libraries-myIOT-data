@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Captive Portal</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+<style>
+    .hidden {
+        display:none;
+    }
+    .shown {
+        display:block;
+    }
+
+    body {
+        font-family:'Arial',sans-serif;
+        font-weight:bold;
+        margin-left: 20px;
+    }
+    .link_button   {
+        background-color: #e4685d;
+        border: none;
+        box-shadow: 0 1px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+        -moz-border-radius:4px;
+        -webkit-border-radius:4px;
+        border-radius:4px;
+        color: white;
+        padding: 10px 30px;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 120%;
+        margin-top:24px;
+    }
+    .link_button:active {
+        position:relative;
+        top:2px;
+        box-shadow: 0 0 0 0 rgba(0,0,0,0.2), 0 0 0 0 rgba(0,0,0,0.19);
+    }
+    .ssid_list {
+        line-height: 20px;
+        margin-bottom: 4px;
+        vertical-align: middle;
+    }
+    .ssid_list > a {
+        width: 160px;
+        display: inline-block;
+        position: relative;
+        padding: 0.25em 1.0em;
+        margin-right: 1.0em;
+        text-align: center;
+        text-decoration: none;
+        color: #FFF;
+        background-color: #006778;
+        background-image: -webkit-linear-gradient(top, #0087b0, #006778);
+        background-image: linear-gradient(to bottom, #0087b0, #006778);
+        border-bottom: solid 3px #004462;
+        border-radius: 4px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 3px 2px rgba(0, 0, 0, 0.19);
+    }
+    .ssid_list > a:active {
+        border-bottom: solid 3px #006778;
+        box-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
+    }
+    .img_lock {
+        display: inline-block;
+        width: 32px;
+        height:32px;
+        margin-left: 0.5em;
+        vertical-align: middle;
+        background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAACZElEQVRYhe2VTUhUURTHf2emSaiNUi4KtKACTQgcJ8rJpC+CIMiF9uGmVViCU9kHRC3cRFCQqWiFEgR9QW2KVi1KKsescYRo1RdFSwuNCLNp3mkxd8DCeXNt5uGmPxzefeede87vnXvvezDLkplOqOl5WeQkEg0iBFW0BEBUPqkS9wUCt582rxrzBGBD+0jhT3/yLLAXYRSVh6AfTZoliG5CKQauzk36j/cfrhzPG0D4QrwWn3ML+KIqxwbHgg9oE+ePoDb1VRfFt4roOWABjm939FDwcc4A6zpiG1W4D1ycLODEcFMokX62vjNeDPAkEhxN+6ouxwIFk5wBDoiyfeBg6JFb/jnZABxkpQjt0ZaqUwBr20eW+vzJk0B9EqcQINwZGwfuOEn/6WdNlR+Ao+Gu4R8qWg64AsxoE1Z3vtgD0iswpMIlfDKSotRKUfYrrAHdNxhZfdM2pzVAdffwcknqK4TWaEuoZ7qYcFesGeU8UBGNhN7Z5rZWTUesdMptOdAA7AIq0s7a7ucleS/8l8qBIUCBr8C4GQ+ZZ56qHpgArptiYmyF8U0AO70qvhgYA1pdYo6YmEVeANwgdaTcNq4A/cC1fBcPAN+BRovYRuAbFt+YmaiU1EYrs4gtM7FWp8FnCTDPXD9bxKZj5lvmdlUfqbfJxfrcCmTrgP47u51sl2DWALJ14L0xzwAyKQHsAJYZqwN+eQGQqQNXgHtT7u8aX94BMum1pS9ngEwd2DKNb7MXAJm0jdS6p1VnfHkHcDsFCzOM8wrgubL9sdw60GssJ/3/FGdbgrfAQI413uQ431v9Bn8ZuSAzPe5xAAAAAElFTkSuQmCC) no-repeat;
+    }
+
+
+    .form-style {
+        max-width: 400px;
+        margin: 10px auto;
+        padding: 16px;
+    }
+    .form-style h1{
+        background: #006778;
+        border-radius:4px;
+        padding: 16px 0;
+        font-size: 140%;
+        font-weight: 300;
+        text-align: center;
+        text-shadow:0px 1px 0px #002778;
+        color: #fff;
+        margin: -16px -16px 16px -16px;
+    }
+    .form-style input[type="password"],
+    .form-style input[type="text"],
+    .form-style textarea,
+    .form-style select
+    {
+        -webkit-transition: all 0.30s ease-in-out;
+        -moz-transition: all 0.30s ease-in-out;
+        -ms-transition: all 0.30s ease-in-out;
+        outline: none;
+        box-sizing: border-box;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        width: 100%;
+        background: #fff;
+        margin-bottom: 4%;
+        border: 1px solid #ccc;
+        padding: 3%;
+        color: #555;
+        font-size: 100%;
+    }
+    .form-style input[type="password"]:focus,
+    .form-style input[type="text"]:focus,
+    .form-style textarea:focus,
+    .form-style select:focus
+    {
+        box-shadow: 0 0 5px #276873;
+        padding: 3%;
+        border: 2px solid #276873;
+    }
+    .form-style input[type="submit"]
+    {
+        background-color: #e4685d;
+        border: none;
+        box-shadow: 0 1px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+        -moz-border-radius:4px;
+        -webkit-border-radius:4px;
+        border-radius:4px;
+        color: white;
+        padding: 10px 30px;
+        text-decoration: none;
+        display: block;
+        font-size: 120%;
+        margin-top:24px;
+    }
+    .form-style input[type="submit"]:active
+    {
+        position:relative;
+        top:2px;
+        box-shadow: 0 0 0 0 rgba(0,0,0,0.2), 0 0 0 0 rgba(0,0,0,0.19);
+    }
+</style>
+
+<script type="text/javascript">
+
+    var show_state = -1;
+    var device_name;
+    var connect_ssid;
+    var iot_check_counter = 0;
+    var web_socket;
+    var debug_captive = 0;
+        // #define must be set in myIOTWebSocket for this to be very useful
+
+    function setHTMLById(id,html)
+    {
+        document.getElementById(id).innerHTML = html;
+    }
+
+    function hideById(id)
+    {
+        document.getElementById(id).classList.remove('shown')
+    }
+
+    function showById(id)
+    {
+        document.getElementById(id).classList.add('shown')
+    }
+
+    function getValueById(id)
+    {
+        return document.getElementById(id).value;
+    }
+
+
+    function setObjHTML(obj,thing)
+    {
+        if (typeof(obj[thing]) != "undefined")
+            document.getElementById(thing).innerHTML = obj[thing];
+    }
+
+    //--------------------------------------
+    // state machine
+    //---------------------------------------
+
+    function showState(state)
+    {
+        show_state = state;
+
+        console.log("showState(" + state + ")");
+
+        hideById('ap_pass_form');
+        hideById('set_button');
+        hideById('ssid_form');
+        hideById('join_button');
+        hideById('connecting');
+        hideById('connected');
+
+        // We may or may not get to the final connecte state in AP mode ...
+        // esp if I decide that "Joining" a network amounts to rebooting
+        // the esp32. But for now I allow for the possibility that the
+        // station happens to connect on the same channel as this AP,
+        // and so both can run concurently for some period of time after the
+        // connection request, and the AP can report success
+
+        if (state == 4)
+        {
+            showById('connected');
+            setHTMLById('device_name',device_name);
+            setHTMLById('connect_ssid',connect_ssid);
+        }
+
+
+        // state == 2 - the pressed the Join button, so we hide the button
+        // and put up the progress bar
+
+        else if (state == 2)
+        {
+            showById('ssid_form');
+            showById('connecting');
+            document.getElementById('ssid_progress').value = 0;
+            interval1=setInterval(function ()
+            {
+                var ele = document.getElementById("ssid_progress");
+                var max = parseInt(ele.getAttribute("max"))
+                var i = parseInt(ele.getAttribute("value"));
+                if (i >= max) i = 0;
+                ele.setAttribute("value",i+1);
+            },200);
+        }
+
+        // state == 1 - Station is not connected (or there would be no AP,
+        // and we would not be here in the first place.   Show them the
+        // SSID/PASS page.
+
+        else if (state == 1)
+        {
+            showById('ssid_form');
+            showById('join_button');
+        }
+
+
+        // state == 0 - AP using default password
+        // show the "set password dialog"
+        // setting the password with JSON *should* respond with
+        // a state change to 1
+
+
+        else
+        {
+            showById('ap_pass_form');
+            showById('set_button');
+        }
+    }
+
+
+    function joinNetwork()
+    {
+        // called from entry buttons
+        showState(2);
+        connect_ssid = getValueById('entry_ssid');
+        psk = getValueById('entry_psk');
+
+        // alert("joinNetwork(" + ssid + "," + psk + ")");
+
+        var json = JSON.stringify({
+            cmd : "join_network",
+            ssid : connect_ssid,
+            psk  : psk});
+        web_socket.send(json);
+    }
+
+
+    function setAPPassword()
+    {
+        var p1 = getValueById('ap_pass1');
+        var p2 = getValueById('ap_pass2');
+        if (p1 == "")
+        {
+            alert("you must enter a password");
+            return;
+        }
+        else if (p1 != p2)
+        {
+            alert("passwords don't match");
+            return;
+        }
+        var json = JSON.stringify({
+            cmd : "set_ap_pass",
+            psk : p1 });
+        web_socket.send(json);
+        // showState(1);
+    }
+
+
+
+    //--------------------------------------
+    // checkers and status
+    //--------------------------------------
+
+    function startCaptive()
+    {
+        if (debug_captive)
+            showById('debug_table');
+
+        setInterval(function () {
+                setHTMLById("host_status",location.host);
+                setHTMLById("browser_status",window.navigator.onLine ? "onLine" : "not onLine");
+            },200);
+
+        showState(0);
+
+        var url = 'ws://' + location.host + ':81';
+        web_socket = new WebSocket(url);
+
+        web_socket.onopen = function(openEvent) {
+            console.log("WebSocket OPEN: " + JSON.stringify(openEvent, null, 4));
+            var info_cmd = '{"cmd":"device_info"}';
+            web_socket.send(info_cmd);
+            setInterval(function() {
+                web_socket.send(info_cmd);
+            },6000);
+
+        };
+        web_socket.onclose = function (closeEvent) {
+            console.log("WebSocket CLOSE: " + JSON.stringify(closeEvent, null, 4));
+        };
+        web_socket.onerror = function (errorEvent) {
+            console.log("WebSocket ERROR: " + JSON.stringify(errorEvent, null, 4));
+        };
+        web_socket.onmessage = function (messageEvent)
+        {
+            var wsMsg = messageEvent.data;
+            console.log("WebSocket MESSAGE: " + wsMsg);
+
+            var obj = JSON.parse(wsMsg);
+            if (obj)
+            {
+                if (obj.join_network)
+                {
+                    if (obj.join_network == "OK")
+                    {
+                        if (obj.connect_ip)
+                            setHTMLById('connect_ip',obj.connect_ip);
+                        showState(4);
+                    }
+                    else
+                    {
+                        alert("Could not connect to " + connect_ssid + "\n" + "Please try again ...");
+                        showState(1);
+                    }
+                }
+                else
+                {
+                    setObjHTML(obj,'uptime');
+                    setObjHTML(obj,'iot_setup');
+                    setObjHTML(obj,'wifi_mode');
+                    setObjHTML(obj,'iot_status');
+                    setObjHTML(obj,'ap_ssid');
+                    setObjHTML(obj,'ap_ip');
+                    setObjHTML(obj,'sta_ssid');
+                    setObjHTML(obj,'sta_ip');
+                    setObjHTML(obj,'iot_setup');
+                    setObjHTML(obj,'sta_gateway');
+
+                    if (obj.sta_ip)
+                        setHTMLById('connect_ip',obj.sta_ip);
+
+                    if (obj.device_name)
+                    {
+                        device_name = obj.device_name;
+                        document.title = device_name;
+                    }
+
+                    if (typeof(obj.iot_setup) != "undefined")
+                    {
+                        if (obj.iot_setup && show_state == 0)
+                            showState(1);
+                        else if (show_state && !obj.iot_setup)
+                            showState(0);
+                    }
+                }
+            }
+            else
+                console.log("Could not parse json: " + wsMsg);
+        }
+    }
+
+
+    window.onload = startCaptive;
+
+</script>
+</head>
+
+<body>
+<table border='0'><tr><td valign='top'>
+<td>
+    <br><br>
+    <table id="debug_table" width='320px' border='0' class='hidden'>
+        <tr><td width='100px'>Browser</td><td id='browser_status'></td></tr>
+        <tr><td>Host</td><td id='host_status'></td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>uptime</td><td id='uptime'></td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>iot_setup</td><td id='iot_setup'></td></tr>
+        <tr><td>wifi_mode</td><td id='wifi_mode'></td></tr>
+        <tr><td>iot_status</td><td id='iot_status'></td></tr>
+        <tr><td>ap_ssid</td><td id='ap_ssid'></td></tr>
+        <tr><td>ap_ip</td><td id='ap_ip'></td></tr>
+        <tr><td>sta_ssid</td><td id='sta_ssid'></td></tr>
+        <tr><td>sta_ip</td><td id='sta_ip'></td></tr>
+        <tr><td>sta_gateway</td><td id='sta_gateway'></td></tr>
+    </table>
+
+</td><td>
+
+    <div id='ap_pass_form' class="form-style hidden">
+        <form>
+            <h1>Set AP Password</h1>
+            <p>
+                The Access Point is currently using the default password.<br>
+                Before you can continue, you must change the password.
+            </p>
+            Password: <input id="ap_pass1" type="password" name="ap_pass1"/>
+            Repeat: <input id="ap_pass2" type="password" name="ap_pass2"/>
+            <p align='center' id="set_button" class="hidden"><a href="javascript:setAPPassword()" class="link_button">Set</a></p>
+        </form>
+    </div>
+
+    <div id='ssid_form' class="form-style hidden">
+        <form>
+            <h1>Connect to Wifi Network</h1>
+            SSID: <input id="entry_ssid" type="text" name="ssid"/>
+            PASS: <input id="entry_psk" type="password" name="psk"/>
+            <p align='center' id="join_button" class="hidden"><a href="javascript:joinNetwork()" class="link_button">Join</a></p>
+            <div id="connecting" class='hidden'><h2>Connecting <progress id="ssid_progress" max="40"/></h2></div>
+        </form>
+    </div>
+
+    <div id='connected' class='hidden'>
+        <br><br>
+        <center>
+        <h2>
+            <font color='blue'><span id='device_name'>Device</span></font>
+            is connected to
+            <font color='blue'><span id='connect_ssid'>SSID</span></font> at <br>
+            <b><span id='connect_ip'>&nbsp;</span></b><br>
+            <br>You may close this window
+        </h2>
+        </center>
+        <br>
+    </div>
+
+</td></tr></table>
+
+</body>
+</html>

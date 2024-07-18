@@ -60,6 +60,27 @@ var file_request_num = 0;
 var cur_button = 'dashboard_button';
 var alive_timer;
 
+var global_disable = false;
+var disabled_classes = "";
+
+
+function enableControls()
+{
+    if (global_disable)
+    {
+        $('.myiot').attr("disabled",1);
+    }
+    else
+    {
+        $('.myiot').removeAttr("disabled");
+        if (disabled_classes != '')
+            $(disabled_classes).attr("disabled",1);
+
+    }
+
+}
+
+
 
 function onTab(event)
     // triggered when the user changes tabs in the UI
@@ -268,7 +289,8 @@ function openWebSocket()
 {
     // disable all controls=
 
-    $('.myiot').attr("disabled",1);
+    global_disable = true;
+    enableControls();
 
     // is_server connects to HTTPS Server port using
     // WSS at the url /ws, or HTTP Server at 8080
@@ -366,6 +388,7 @@ function openWebSocket()
 
 function handleWS(ws_event)
 {
+    var do_enable = false;
     var ws_msg = ws_event.data;
     var obj = JSON.parse(ws_msg);
     if (!obj)
@@ -408,7 +431,8 @@ function handleWS(ws_event)
 
         if (obj.set == 'DEVICE_BOOTING')
         {
-            $('.myiot').attr("disabled",1);
+            global_disable = true;
+            do_enable = true;
             $('#device_status').html('rebooting');
         }
     }
@@ -434,7 +458,10 @@ function handleWS(ws_event)
     // this is essentially the 'new' context trigger
 
     if (obj.values)
+    {
         fillTables(obj);
+        do_enable = true;
+    }
 
     // update SPIFFS or SDCARD file lists
 
@@ -474,9 +501,10 @@ function handleWS(ws_event)
         cur += obj.ws_open ? 'ws_open' : 'ws_closed';
         $('#device_status').html(cur);
         if (obj.ws_open)
-            $('.myiot').removeAttr("disabled");
+            global_disable = false;
         else
-            $('.myiot').attr("disabled",1);
+            global_disable = true;
+        do_enable = true;
     }
 
     // build the device list, pick the 0th one by default
@@ -508,6 +536,15 @@ function handleWS(ws_event)
             sendCommand("set_context",{uuid:device_uuid});
         }
     }
+
+    if (obj.disabled_classes != undefined)
+    {
+        disabled_classes = obj.disabled_classes;
+        do_enable = true;
+    }
+
+    if (do_enable)
+        enableControls();
 }
 
 
@@ -666,15 +703,18 @@ function addOutput(item)
 
 function addButton(item)
 {
-    return $('<button />')
+    var obj =  $('<button />')
         .addClass('myiot')
+        .addClass(item.css)
         .attr({
             id: item.id,
             'data-verify' : (item.style & VALUE_STYLE_VERIFY ? true : false),
             onclick:'onButton(event)' })
         .html(item.id);
+    if (item.css != '')
+        obj.addClass(item.css);
+    return obj;
 }
-
 
 
 
@@ -751,14 +791,14 @@ function fillTables(obj)
     // This is specifically for the OTA & UPLOAD buttons
     // even though it wastes time on all the other values
 
-    $('.myiot').removeAttr("disabled");
+    global_disable = false;
 
     // then if we notice the device is booting, disable the controls
 
     if (obj.values['DEVICE_BOOTING'] &&
         obj.values['DEVICE_BOOTING'].value)
     {
-        $('.myiot').attr("disabled",1);
+        global_disable = true;
         $('#device_status').html('rebooting');
     }
 
@@ -782,7 +822,6 @@ function fillTables(obj)
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     });
-
 
     console.log("done finishing up")
 }

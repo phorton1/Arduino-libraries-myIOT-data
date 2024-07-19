@@ -537,7 +537,7 @@ function handleWS(ws_event)
         }
     }
 
-    if (obj.disabled_classes != undefined)
+    if (typeof obj.disabled_classes != 'undefined')
     {
         disabled_classes = obj.disabled_classes;
         do_enable = true;
@@ -661,6 +661,8 @@ function addInput(item)
         input.attr({
             step : "0.001",
             'data-decimals' : 3 });
+    if (item.css != '')
+        input.addClass(item.css);
     return input;
 }
 
@@ -677,6 +679,8 @@ function addSwitch(item)
             type: 'checkbox',
             onchange:'onSwitch(event)' });
     input.prop('checked',item.value);
+    if (item.css != '')
+        input.addClass(item.css);
     var ele = $('<div />')
         .addClass('form-check form-switch my_switch')
         .append(input);

@@ -53,6 +53,7 @@ var ws_connect_count = 0;
 var ws_open_count = 0;
 var device_name = '';
 var device_url = '';
+var device_widget = '';
 var device_uuid = '';
 var device_has_sd = 0;
 var device_list;
@@ -452,6 +453,13 @@ function handleWS(ws_event)
         device_has_sd = parseInt(obj.has_sd);
             // cache the value of the has_sd for use in
             // value_list fillTables() method.
+
+        device_widget = '';
+        if (obj.device_widget)
+        {
+            device_widget = obj.device_widget;
+            $('#widget_content').html(device_widget);
+        }
     }
 
     // if there are values, then we fill the tables
@@ -817,6 +825,17 @@ function fillTables(obj)
     {
         $('#sdcard_button').removeClass('shown');
         if (cur_button == 'sdcard_button')
+            $('#dashboard_button').click();
+    }
+
+    // same for the widget button
+    
+    if (device_widget != '')
+        $('#widget_button').addClass('shown');
+    else
+    {
+        $('#widget_button').removeClass('shown');
+        if (cur_button == 'widget_button')
             $('#dashboard_button').click();
     }
 

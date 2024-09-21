@@ -12,6 +12,7 @@
     <script src="/myIOT/jquery-3.6.0.min.js"></script>
     <script src="/myIOT/bootstrap5.1.3.bundle.min.js"></script>
     <script src="/myIOT/iotCommon.js"></script>
+    <script src="/myIOT/iotPlot.js"></script>
 </head>
 <body>
 
@@ -30,6 +31,15 @@
             &nbsp;<span id='device_status' class='small'>&nbsp;</span>
         </div>
         <ul class="nav nav-dark nav-pills" id="my_nav_buttons" role="tablist">
+			<li class="nav-item">
+                <button
+                    class="nav-link my_nav_link hidden"
+                    id="widget_button"
+                    data-bs-toggle="tab"
+                    data-bs-target="#widget">
+                    Widget
+                </button>
+            </li>
             <li class="nav-item">
                 <button
                     class="nav-link my_nav_link active"
@@ -84,6 +94,20 @@
 
 <div id="my_tab_content" class="tab-content">
 
+    <!-- widget_tab -->
+
+    <div id="widget" class="tab-pane fade">
+
+		THIS IS THE WIDGET
+
+        <div id='widget_content' width='90%'>
+
+			THIS IS THE WIDGET CONTENT
+			
+		</div>
+
+    </div>
+
     <!-- dashboard tab -->
 
     <div id="dashboard" class="tab-pane fade show active">
@@ -99,11 +123,6 @@
                 <tr><td>test</td><td>2</td><td>&nbsp;</td></tr>
             </tbody>
         </table>
-
-        <!--label htmlFor="chart_hours">Hours</label>
-        <input type="number" value='1' id='chart_hours'>
-        <button onclick='updateChartData()'>Update</button>
-        <div class="ct-chart ct-perfect-fourth"></div-->
 
     </div>
 

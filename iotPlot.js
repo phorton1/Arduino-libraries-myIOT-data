@@ -1,166 +1,6 @@
 // iotPlot.js
-//
-// A library that is always included, but not necessarily used,
-// that in turn, loads the jqplot CSS and JS as needed, and
-// can generate a chart
 
-//------------------------------------------------------
-// jqPlot dependency loading and doPlot framework
-//------------------------------------------------------
-
-const DependencyState = {
-    NOT_LOADED: 0,
-    LOADING: 1,
-    LOADED: 2,
-    ERROR: 3,
-};
-
-
-var dependencies = [];
-var dependencies_state = 0;
-	// 0=not loaded, 1=loading, 2=loaded, 3=error
-let plotInProgress = false;
-
-
-function addDependency(file_type,file_url)
-{
-	dependencies.push({
-		type:file_type,
-		url:file_url});
-}
-
-
-function loadDependency(number)
-{
-	var ele;
-	const dep = dependencies[number];
-	if (dep.type == 'css')
-	{
-		ele = document.createElement('link');
-		ele.rel = 'stylesheet';
-		ele.href = dep.url;
-	}
-	else // dep.type == 'js'
-	{
-		ele = document.createElement("script");
-		ele.src = dep.url
-	}
-    return new Promise((resolve, reject) => {
-        ele.addEventListener('load', () => {
-            console.log(dep.url + ' loaded');
-            if (number < dependencies.length - 1) {
-                resolve(loadDependency(number + 1)); // Recursively load next dependency
-            } else {
-                resolve(); // All dependencies loaded
-            }
-        });
-        ele.addEventListener('error', (ev) => {
-            alert('Error loading ' + dep.url, ev);
-            reject(new Error('Error loading dependency: ' + dep.url));
-        });
-        document.head.appendChild(ele);
-    });
-}
-
-
-function getDependencies()
-{
-	if (dependencies_state == DependencyState.NOT_LOADED)
-	{
-		dependencies_state = DependencyState.LOADING;
-		addDependency("css","/myIOT/jquery.jqplot.min.css?cache=1\"");
-		addDependency("js","/myIOT/jquery.jqplot.min.js?cache=1\"");
-		addDependency("js","/myIOT/jqplot.dateAxisRenderer.js?cache=1\"");
-		addDependency("js","/myIOT/jqplot.cursor.js?cache=1\"");
-		addDependency("js","/myIOT/jqplot.highlighter.js?cache=1\"");
-		// jqplot.enhancedLegendRenderer.js renamed to jqplot.legendRenderer.js
-		// because of ESP32 SPIFFS max filename length
-		addDependency("js","/myIOT/jqplot.legendRenderer.js?cache=1\"");
-        return loadDependency(0).then(() => {
-
-			// one time global jqplot initialization
-
-			$.jqplot.config.enablePlugins = true;
- 			$.jqplot._noToImageButton = true;
-
-            dependencies_state = DependencyState.LOADED;
-        });
-	}
-	else if (dependencies_state == DependencyState.LOADING)
-	{
-		alert("the iotPlot dependencies are still loading!");
-        return Promise.reject(new Error('Dependencies still loading'));
-	}
-	else if (dependencies_state == DependencyState.ERROR)
-	{
-		alert("there was an error loading the  iotPlot dependencies");
-        return Promise.reject(new Error('Error loading dependencies'));
-	}
-	else // dependencies_state must equal DependencyState.LOADED
-	{
-		console.log('Dependencies loaded!')
-		return Promise.resolve();
-	}
-}
-
-
-
-
-function doPlot(plot_name, div_id,header_url,data_url)
-{
-    if (plotInProgress)
-        // A plot operation is already ongoing; ignore this request
-        return Promise.resolve();
-
-    plotInProgress = true;
-
-    return new Promise((resolve, reject) => {
-        getDependencies()
-            .then(() => {
-				console.log('Calling doThePlot()');
-                try {
-                    doThePlot(plot_name, div_id,header_url,data_url); // Call doThePlot directly
-                    resolve(); // Resolve the Promise
-                } catch (error) {
-                    reject(error); // Reject if an error occurs
-                } finally {
-                    plotInProgress = false;
-                }
-            })
-            .catch((error) => {
-                console.error('Error during dependency loading:', error);
-                reject(error); // Propagate the error
-            });
-    });
-
-}
-
-
-async function plotButtonHandler(
-	plot_name,
-	div_id,
-	header_url,
-	data_url)
-{
-    try
-	{
-        await doPlot(plot_name, div_id,header_url,data_url); 	// Wait for the plot operation to complete
-        console.log('Plot completed successfully!');
-    }
-	catch (error)
-	{
-        console.error('Error during plot:', error);
-    }
-}
-
-
-
-//------------------------------------------------------
-// doThePlot initially copied from old temp_chart.html
-//------------------------------------------------------
-
-const use_zoom = true;
-
+var use_zoom = true;
 
 var chart_by_name = {};
 var header_by_name = {};
@@ -216,7 +56,7 @@ function determineNumTicks(header)
 
 
 
-function do_the_plot(chart_name, div_id, data,num_recs,secs)
+function do_the_plot(chart_name,  data,num_recs,secs)
 {
 	if (chart_by_name[chart_name])
 	{
@@ -338,17 +178,20 @@ function do_the_plot(chart_name, div_id, data,num_recs,secs)
 
 	// document.getElementById("info").value = info;
 
-	var plot = $.jqplot(div_id, data, options);
+	var plot = $.jqplot(chart_name + '_chart', data, options);
 
 	// reverse the order of the canvasas so that
 	// the most important one (zero=temperature1)
 	// is on top.
 
-	for (var i=header.num_cols-1; i>=0; i--)
+	if (false)
 	{
-		plot.moveSeriesToFront(i);
+		for (var i=header.num_cols-1; i>=0; i--)
+		{
+			plot.moveSeriesToFront(i);
+		}
 	}
-
+	
 
 	// add a click handler to the enhancedLegendRenderer
 	// legend swatches so that when a series is made
@@ -368,18 +211,28 @@ function do_the_plot(chart_name, div_id, data,num_recs,secs)
 		i++;
 	});
 
-	// var refresh = document.querySelector("#refresh_interval");
-	// if (refresh.value > 0)
-	// 	refresh_timer = setTimeout(get_chart_data,refresh.value * 1000);
+
+	// remember the plot
 
 	chart_by_name[chart_name] = plot;
 
+	// set refresh timer if appropriate
+
+	var refresh = document.getElementById(chart_name + '_refresh_interval');
+	if (refresh && refresh.value > 0)
+	 	timer_by_name[chart_name] = setTimeout(
+			function () {
+				get_chart_data(chart_name);
+			},refresh.value * 1000);
+
+
+	// enable the button
+
+	document.getElementById(chart_name + "_update_button").disabled = false;
 }
 
 
-
-
-function create_chart_data(chart_name, div_id, abuffer)
+function create_chart_data(chart_name, abuffer)
 	// Decode the binary data into jqPlot compatible arrays of actual data.
 	// The binary starts with a uin32_t for the number of records, followed
 	// by that number of records consisting of a uint32 timestamp followed
@@ -462,29 +315,26 @@ function create_chart_data(chart_name, div_id, abuffer)
 		}
 	}
 
-	do_the_plot(chart_name, div_id, data,num_recs,max_time-min_time);
+	do_the_plot(chart_name, data,num_recs,max_time-min_time);
 }
 
 
 
 
-function get_chart_data(chart_name, div_id, data_url)
+function get_chart_data(chart_name)
 {
-	if (timer_by_name[chart_name])
-	{
-		clearTimeout(timer_by_name[chart_name]);
-		delete timer_by_name[chart_name];
-	}
+	console.log("get_chart_data(" + chart_name + ")");
 
-	// var secs = document.getElementById("chart_period").value;
+	var ele = document.getElementById(chart_name + "_chart_period");
+	var secs = ele ? ele.value : 0;
 
 	var xhr = new XMLHttpRequest();
-	xhr.open('GET', data_url, true);
+	xhr.open('GET', '/custom/chart_data/' + chart_name + "?secs=" + secs, true);
 		// '/custom/chart_data?uuid=%%UUID%%&secs=' + secs, true);
 	xhr.responseType = 'arraybuffer';
 	xhr.onload = function(e)
 	{
-		create_chart_data(chart_name, div_id, this.response);
+		create_chart_data(chart_name, this.response);
 	};
 
 	xhr.send();
@@ -492,89 +342,61 @@ function get_chart_data(chart_name, div_id, data_url)
 
 
 
-function create_chart(chart_name, div_id, header_url, data_url)
+function create_chart(chart_name)
 {
+	console.log("create_chart(" + chart_name + ")");
+
 	var xhr_init = new XMLHttpRequest();
 	xhr_init.onreadystatechange = function()
 	{
 		if (this.readyState == 4 && this.status == 200)
 		{
 			header_by_name[chart_name] = JSON.parse(this.responseText);
-			get_chart_data(chart_name, div_id, data_url);
+			get_chart_data(chart_name);
 		}
     }
-	xhr_init.open('GET', header_url, true);
+	xhr_init.open('GET', '/custom/chart_header/' + chart_name, true);
 	xhr_init.send();
 }
 
 
 
 
-function doThePlot(chart_name, div_id, header_url, data_url)
+function doPlot(chart_name)
+	// doPlot() is called when the tab is activated, or when they click the Update button.
+	//    the Update button should be disabled until such a time as (a) the dependencies
+	//    have loaded, and (b) the initial plot per activation takes place.
+	// in the case the the widget is activated in WidgetState.ERROR, cuz the dependencies
+	//	  we log it to the console and return inasmuch as the error was already reported
+	//	  with an alert() in loadWidgetDependencies().
+	// in the case that the dependencies are not loaded yet, or in the process of being loaded,
+	//	  we overuse the refresh_timer to try again in 1 second
 {
-	console.log('doThePlot(' + chart_name + ') called');
+	console.log('doPlot(' + chart_name + ') called');
+
+	stopPlot(chart_name);
+
 	if (!chart_by_name[chart_name])
 	{
-		create_chart(chart_name, div_id, header_url, data_url);
+		create_chart(chart_name);
 	}
 	else
 	{
-		get_chart_data(chart_name, div_id, data_url);
+		get_chart_data(chart_name);
 	}
 }
 
 
-// The rubber is getting pretty close to the road here.
-//
-// I now have a generalized way of loading dependent JS and CSS
-// that is called from a chart-specific plotButtonHandler()
-// and which calls a specific doThePlot() method.
-//
-// doThePlot(), in turn, is a bit generalized to allow multiple
-// different plots on the same page, but only one is really supported,
-// the one that's implemented in Fridge::onCustomLink(), that in turn
-// only works with the current Fridge's dataLog object, with its specific
-// getChartHeader() and getChartData() structures, which are furthermore
-// very specifically used by the jqPlot code to create a certain kind
-// of chart.
-//
-// Even so, at this point, it is missing the chart_period pulldown that
-// gives the user determine number of seconds for the chart, and the
-// refresh_period user determine automatic automatic refreshing.
-//
-// There are a number of things I would like to do, all at once, with this mess.
-//
-// 1) The Widget tab should automatically load dependencies and create and show
-//    the initial chart if the tab is activated, but not otherwise
-// 2) The idea of a Widget as a small completely self contained bit of HTML is
-//    going to be too constraining and difficult to maintain.  A widget should
-//    consist of a number of pieces (records) that specify either "Values" or other objects
-//	  to be placed into an intelligent flex grid.  One (or more) of those "pieces"
-//    can then by "Charts" that further specify options and data sources, and of
-//    that whole world, one of those sets of options and one of those data sources
-//    should be an instance of the myIOTDataLogger, or perhaps a class derived from
-//    that, which then provides the chart type and options for that specific
-//    chart.
-// 3) Some charts (esp those using the myIOTDataLogger) can have a "period" of
-//    a number of seconds for a chart, and the Widget should be able to place
-//    a ChartPeriod selection box on the Widget that basically has nothing to
-//    do with traditional myIOTDevice values, since the ChartPeriod is user,
-//    not device, specific.
-// 4) Likewise, some charts can be made to automatically update themselves,
-//    whereas that's not very practical for other ones.
-// 5) Ultimately I would like to be able to produce 'rapid' charts (Plotter)
-//    of things like a clock's swing ... in 3 or 5ms steps, that update by
-//    taking advantage of the relatively high bandwidth of WS broadcasts.
-// 6) Then there is the whole additional issue of UUIDs and how to get this
-//    to work THRU the myIOTServer.
-// 7) And the whole additional issue of caching unchanging javascript, versus
-//    caching of my somewhat changing javascript, as well as the chart_headers,
-//    vs never caching the data requests.
-//
-// To the degree that the iotPlot.js script is in the context of the iotCommon.js
-// code, it has access to the device's UUID for the myIOTServer, BUT, additionally,
-// I think I would like to be able to pop a chart up in a separate window so-as
-// not to have to load the entire IOT device to see a chart and/or to be able to
-// watch the chart separate from the myIOT device.
-//
-// This is getting complicated!
+function stopPlot(chart_name)
+	// stopPlot() is called when the tab is de-activated and also
+	// at the top of get_chart_data() when we start loading new data
+	// to turn off any existing pending timer for the chart.
+{
+	document.getElementById(chart_name + "_update_button").disabled = true;
+	if (timer_by_name[chart_name])
+	{
+		clearTimeout(timer_by_name[chart_name]);
+		delete timer_by_name[chart_name];
+	}
+}
+

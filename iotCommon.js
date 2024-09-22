@@ -53,7 +53,6 @@ var ws_connect_count = 0;
 var ws_open_count = 0;
 var device_name = '';
 var device_url = '';
-var device_widget = '';
 var device_uuid = '';
 var device_has_sd = 0;
 var device_list;
@@ -63,6 +62,8 @@ var alive_timer;
 
 var global_disable = false;
 var disabled_classes = "";
+
+var device_widget = '';
 
 
 function enableControls()
@@ -87,6 +88,16 @@ function onTab(event)
     // triggered when the user changes tabs in the UI
 {
     cur_button = event.target.id;
+    var prev_button = event.relatedTarget.id;
+
+    if (cur_button == "widget_button")
+    {
+        activateWidget(true);
+    }
+    else if (prev_button == "widget_button")
+    {
+        activateWidget(false);
+    }
 }
 
 
@@ -454,11 +465,23 @@ function handleWS(ws_event)
             // cache the value of the has_sd for use in
             // value_list fillTables() method.
 
+        // widget
+        // init
+
+        $('#widget_button').removeClass('shown');
+        if (cur_button == 'widget_button')
+            $('#dashboard_button').click();
         device_widget = '';
+        widget_state = WidgetState.NOT_LOADED;
+        widget_deps = [];
+
+        // load
+        
         if (obj.device_widget)
         {
             device_widget = obj.device_widget;
-            $('#widget_content').html(device_widget);
+            $('#widget_content').html(device_widget.html);
+            loadWidgetDependencies();
         }
     }
 
@@ -828,17 +851,6 @@ function fillTables(obj)
             $('#dashboard_button').click();
     }
 
-    // same for the widget button
-    
-    if (device_widget != '')
-        $('#widget_button').addClass('shown');
-    else
-    {
-        $('#widget_button').removeClass('shown');
-        if (cur_button == 'widget_button')
-            $('#dashboard_button').click();
-    }
-
     // Enable tooltips on any controls that have them
 
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -997,6 +1009,99 @@ function updateTimers()
         else
             ele.val(str);
     });
+}
+
+
+
+//------------------------------------------------
+// generalized Widget Dependency Loader
+//------------------------------------------------
+
+const WidgetState = {
+    NOT_LOADED: 0,
+    LOADING: 1,
+    LOADED: 2,
+    ERROR: 3,
+};
+
+var widget_deps = [];
+var widget_state = WidgetState.NOT_LOADED;
+
+
+
+function loadDependency(num)
+{
+    if (widget_state == WidgetState.ERROR)
+        return;
+    
+    if (num >= widget_deps.length)
+    {
+        console.log("Widget dependencies fully loaded");
+        widget_state = WidgetState.LOADED;
+        // enable the tab button
+        $('#widget_button').addClass('shown');
+    }
+    else
+    {
+        widget_state = WidgetState.LOADING;
+        var dep = widget_deps[num];
+        if (dep.includes(".css"))
+        {
+            ele = document.createElement('link');
+            ele.rel = 'stylesheet';
+            ele.href = dep;
+        }
+        else // dep is 'js'
+        {
+            ele = document.createElement("script");
+            ele.src = dep
+        }
+
+        ele.addEventListener('load', () => {
+            console.log(dep + ' loaded');
+            if (num < widget_deps.length)
+                loadDependency(num + 1);
+        });
+        ele.addEventListener('error', (ev) => {
+            alert('Error loading ' + dep, ev);
+            widget_state = WidgetState.ERROR;
+        });
+        document.head.appendChild(ele);
+    }
+}
+
+
+
+
+function loadWidgetDependencies()
+{
+    // if (widget_state == WidgetState.NOT_LOADED)
+    // {
+        widget_deps = device_widget.dependencies.split(",");
+        loadDependency(0);
+    // }
+}
+
+
+
+function activateWidget(activate)
+{
+    var fxn = activate ?
+        device_widget.onActivate :
+        device_widget.onInactivate;
+
+    if (fxn != '')
+    {
+        try
+        {
+            eval(fxn);
+        }
+        catch (error)
+        {
+            alert("Error executing " + fxn);
+            widget_state = WidgetState.ERROR;
+        }
+    }
 }
 
 

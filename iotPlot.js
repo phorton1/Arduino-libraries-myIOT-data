@@ -56,7 +56,10 @@ function determineNumTicks(header)
 
 
 
-function do_the_plot(chart_name,  data,num_recs,secs)
+function do_the_plot(chart_name, data, num_recs,secs)
+	// create the chart, deleting old one first
+	// current algorithm determines number of y axis ticks
+	// and min/max for each axis with determineNumTicks()
 {
 	if (chart_by_name[chart_name])
 	{
@@ -68,10 +71,9 @@ function do_the_plot(chart_name,  data,num_recs,secs)
 	// I'm not sure to what degree I want to have each app know about
 	// jqplot. They currently don't know much (only that 2400 is better
 	// for charting rpms than 2500), but I can see a case, especially
-	// with the notion of app specific "widgets", for the apps to becom
+	// with the app specific "widgets", for the apps to becom
 	// much more aware of jqplot, and for that matter, bootstrap and jq.
 
-	// var info = '';
 	var header = header_by_name[chart_name];
 	var col = header.col;
 	var num_ticks = determineNumTicks(header);
@@ -86,22 +88,20 @@ function do_the_plot(chart_name,  data,num_recs,secs)
 			show: true,
 			showLabels: true,
 			rendererOptions: {
-				numberRows: 1,
-
-				// not useful as I set the chart ticks
-				// would need to do more sophisticated
-				// stuff to get the idea that we redraw
-				// the chart when a series comes or goes.
-				//
+				numberRows: 1,	// horizontal legend
 				// seriesToggleReplot: true,
+					// not useful as I set the chart ticks
+					// would need to do more sophisticated
+					// stuff to get the idea that we redraw
+					// the chart when a series comes or goes.
 			},
 		},
 		series: [],
 		axes:{
 			xaxis:{
 				renderer:$.jqplot.DateAxisRenderer,
-				// jqplot does a good job of handling the time axis
-				// tickOptions:{formatString:'%H:%M:%S'},
+				// jqplot does a good job of handling the time axis with
+				// tickOptions:{formatString:'%H:%M:%S'}, or
 				// tickInterval: secsToInterval(secs),
 			},
 		},	// axes
@@ -127,24 +127,21 @@ function do_the_plot(chart_name,  data,num_recs,secs)
 		if (i>0) axis_name += (i+1);
 		axis_name += 'axis';
 
-		// info += "col[" + i + "]" + col[i].name;
-		// info += " min:" + col[i].min + " max:" + col[i].max;
-		// info += "\n";
-
 		options.axes[ axis_name ] = {
 			pad: 1.2,
 			show: true,
 			label: col[i].name,
-			showLabel : false,	// true,
+			showLabel : false,	// the axes are the same as the legend
 			min: col[i].min,
 			max: col[i].max,
-			numberTicks: num_ticks, // col[i].num_ticks,	// chart_header.num_ticks,
+			numberTicks: num_ticks,
+				// same number of ticks for all axes at this time
+				// old: col[i].num_ticks or chart_header.num_ticks,
 		};
 		options.series[i] = {
 			label: col[i].name,
 			shadow : false,
 			lineWidth: 2,
-			// yaxis : axis_name,
 		};
 	}
 
@@ -175,8 +172,7 @@ function do_the_plot(chart_name,  data,num_recs,secs)
 		}
 	}
 
-
-	// document.getElementById("info").value = info;
+	// create the plot
 
 	var plot = $.jqplot(chart_name + '_chart', data, options);
 
@@ -184,7 +180,7 @@ function do_the_plot(chart_name,  data,num_recs,secs)
 	// the most important one (zero=temperature1)
 	// is on top.
 
-	if (false)
+	if (true)
 	{
 		for (var i=header.num_cols-1; i>=0; i--)
 		{
@@ -192,14 +188,14 @@ function do_the_plot(chart_name,  data,num_recs,secs)
 		}
 	}
 	
-
 	// add a click handler to the enhancedLegendRenderer
 	// legend swatches so that when a series is made
 	// visible it is moved to the top, so toggling
 	// them on and off effectively lets the user set
 	// the z-order ..
 
-	// prh - NOT MULTI INSTANCE!
+	// Note that this is NOT MULTI INSTANCE and
+	// WILL NOT WORK with multiple charts on one page!
 	
 	var i=0;
 	$('td.jqplot-table-legend-swatch').each(function(){
@@ -225,15 +221,16 @@ function do_the_plot(chart_name,  data,num_recs,secs)
 				get_chart_data(chart_name);
 			},refresh.value * 1000);
 
-
-	// enable the button
+	// enable the Update button
 
 	document.getElementById(chart_name + "_update_button").disabled = false;
 }
 
 
 function create_chart_data(chart_name, abuffer)
-	// Decode the binary data into jqPlot compatible arrays of actual data.
+	// Decode the binary data into jqPlot compatible arrays of actual data.\
+	// and chain to do_the_plot to show the chart.
+	//
 	// The binary starts with a uin32_t for the number of records, followed
 	// by that number of records consisting of a uint32 timestamp followed
 	// by a nuumber of 32 bit fields of specific types.
@@ -322,6 +319,8 @@ function create_chart_data(chart_name, abuffer)
 
 
 function get_chart_data(chart_name)
+	// get the chart_data for a number of seconds
+	// and chain to create_chart_data to parse it
 {
 	console.log("get_chart_data(" + chart_name + ")");
 
@@ -343,9 +342,9 @@ function get_chart_data(chart_name)
 
 
 function create_chart(chart_name)
+	// get the chart_header and chain to get_chart_data
 {
 	console.log("create_chart(" + chart_name + ")");
-
 	var xhr_init = new XMLHttpRequest();
 	xhr_init.onreadystatechange = function()
 	{
@@ -363,18 +362,16 @@ function create_chart(chart_name)
 
 
 function doPlot(chart_name)
-	// doPlot() is called when the tab is activated, or when they click the Update button.
-	//    the Update button should be disabled until such a time as (a) the dependencies
-	//    have loaded, and (b) the initial plot per activation takes place.
-	// in the case the the widget is activated in WidgetState.ERROR, cuz the dependencies
-	//	  we log it to the console and return inasmuch as the error was already reported
-	//	  with an alert() in loadWidgetDependencies().
-	// in the case that the dependencies are not loaded yet, or in the process of being loaded,
-	//	  we overuse the refresh_timer to try again in 1 second
+	// doPlot() is called only after the dependencies have been loaded,
+	// when the Widgit tab is activated in the myIOT, or the document
+	// has loaded in temp_chart.htm
 {
 	console.log('doPlot(' + chart_name + ') called');
 
 	stopPlot(chart_name);
+
+	$.jqplot.config.enablePlugins = true;
+		// set jqplot global options gere
 
 	if (!chart_by_name[chart_name])
 	{
@@ -388,7 +385,7 @@ function doPlot(chart_name)
 
 
 function stopPlot(chart_name)
-	// stopPlot() is called when the tab is de-activated and also
+	// stopPlot() is called when the Widget tab is de-activated and also
 	// at the top of get_chart_data() when we start loading new data
 	// to turn off any existing pending timer for the chart.
 {

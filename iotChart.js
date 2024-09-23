@@ -1,4 +1,4 @@
-// iotPlot.js
+// iotChart.js
 
 var use_zoom = true;
 
@@ -56,7 +56,7 @@ function determineNumTicks(header)
 
 
 
-function do_the_plot(chart_name, data, num_recs,secs)
+function create_chart(chart_name, data, num_recs,secs)
 	// create the chart, deleting old one first
 	// current algorithm determines number of y axis ticks
 	// and min/max for each axis with determineNumTicks()
@@ -229,7 +229,7 @@ function do_the_plot(chart_name, data, num_recs,secs)
 
 function create_chart_data(chart_name, abuffer)
 	// Decode the binary data into jqPlot compatible arrays of actual data.\
-	// and chain to do_the_plot to show the chart.
+	// and chain to create_chart to show the chart.
 	//
 	// The binary starts with a uin32_t for the number of records, followed
 	// by that number of records consisting of a uint32 timestamp followed
@@ -312,7 +312,7 @@ function create_chart_data(chart_name, abuffer)
 		}
 	}
 
-	do_the_plot(chart_name, data,num_recs,max_time-min_time);
+	create_chart(chart_name, data,num_recs,max_time-min_time);
 }
 
 
@@ -341,10 +341,10 @@ function get_chart_data(chart_name)
 
 
 
-function create_chart(chart_name)
+function get_chart_header(chart_name)
 	// get the chart_header and chain to get_chart_data
 {
-	console.log("create_chart(" + chart_name + ")");
+	console.log("get_chart_header(" + chart_name + ")");
 	var xhr_init = new XMLHttpRequest();
 	xhr_init.onreadystatechange = function()
 	{
@@ -361,21 +361,21 @@ function create_chart(chart_name)
 
 
 
-function doPlot(chart_name)
-	// doPlot() is called only after the dependencies have been loaded,
+function doChart(chart_name)
+	// doChart() is called only after the dependencies have been loaded,
 	// when the Widgit tab is activated in the myIOT, or the document
 	// has loaded in temp_chart.htm
 {
-	console.log('doPlot(' + chart_name + ') called');
+	console.log('doChart(' + chart_name + ') called');
 
-	stopPlot(chart_name);
+	stopChart(chart_name);
 
 	$.jqplot.config.enablePlugins = true;
 		// set jqplot global options gere
 
 	if (!chart_by_name[chart_name])
 	{
-		create_chart(chart_name);
+		get_chart_header(chart_name);
 	}
 	else
 	{
@@ -384,8 +384,8 @@ function doPlot(chart_name)
 }
 
 
-function stopPlot(chart_name)
-	// stopPlot() is called when the Widget tab is de-activated and also
+function stopChart(chart_name)
+	// stopChart() is called when the Widget tab is de-activated and also
 	// at the top of get_chart_data() when we start loading new data
 	// to turn off any existing pending timer for the chart.
 {

@@ -1,3 +1,6 @@
+//-----------------------------------------
+// iotCommon.js
+//-----------------------------------------
 // default definition of is_server
 
 var is_server = 0;
@@ -5,7 +8,7 @@ var is_server = 0;
 
 // prh - might be useful to have a watchdog that reloads the page every so often
 
-const debug_alive = 1;
+const debug_alive = 0;
     // these javascript timers are about 1.6 times faster than advertised on my lenovo with firefox
     // they are tuned to myIOTserver not timing out (it listens)
 const keep_alive_interval = 15000;      // how often to check keep alive
@@ -64,6 +67,105 @@ var global_disable = false;
 var disabled_classes = "";
 
 var device_widget = '';
+var no_plot_error = 0;
+
+
+window.onload = startMyIOT;
+    // and away we go
+
+
+//------------------------------------------------
+// startMyIOT()
+//------------------------------------------------
+
+
+function onResize()
+    // onResize for the widget and the plotter. We have to handle
+    // cases where objects are not instantiated or sized yet.
+{
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    
+    const navbar = document.getElementById('my_navbar');
+    let navbar_height = navbar ? navbar.clientHeight : 46;
+    if (typeof(navbar_height) == 'undefined' ||
+        navbar_height == 0)
+        navbar_height = 46;
+
+    // resize the plotter canvas with some margins to prevent scrollbars
+
+    const plot_canvas = document.getElementById('plotter_canvas');
+    const plot_control = document.getElementById('plotter_controls');
+    let plot_control_height = plot_control ? plot_control.clientHeight : 42;
+    if (plot_control_height == 0) plot_control_height = 42;
+
+    const canvas_width = width - 30;
+    const canvas_height = height - navbar_height - plot_control_height - 20;
+
+    plot_canvas.width = canvas_width;
+    plot_canvas.height = canvas_height;
+}
+
+
+
+function startMyIOT()
+{
+    console.log("startMyIOT()");
+
+    // we identify if this is being served from the rPi
+    // by whether or not the protocol is https or the
+    // port is 8080 (by default my "things" use 80/81)
+
+    is_server =
+        (location.protocol == 'https:') ||
+        (location.port == '8080');
+    if (is_server)
+        $('#DEVICE_NAME').addClass('hidden');
+    else
+        $('#device_list').addClass('hidden');
+
+    // If so, we are going to change the deviceName thing to a pulldown
+    // that contains a list of device, select the first device we find,
+    // and set our websocket context to it, THEN issue the typical
+    // startup (device_info, value_list, and spiffs_list) ws commands
+
+    fake_uuid = 'xxxxxxxx'.replace(/[x]/g, (c) => {
+        const r = Math.floor(Math.random() * 16);
+        return r.toString(16);  });
+
+    openWebSocket();
+
+    setInterval(updateTimers,200);
+        // timer for "time_since" field updating
+
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', onTab);
+        // set handler for tab buttons
+
+    // Call onResize() initially
+    onResize();
+
+    // Add event listener for window resize
+    window.addEventListener('resize', onResize);
+
+    initPlotter();
+}
+
+
+function onTab(event)
+    // triggered when the user changes tabs in the UI
+{
+    cur_button = event.target.id;
+    var prev_button = event.relatedTarget.id;
+
+    if (cur_button == "widget_button")
+    {
+        activateWidget(true);
+    }
+    else if (prev_button == "widget_button")
+    {
+        activateWidget(false);
+    }
+}
 
 
 function enableControls()
@@ -82,23 +184,6 @@ function enableControls()
 
 }
 
-
-
-function onTab(event)
-    // triggered when the user changes tabs in the UI
-{
-    cur_button = event.target.id;
-    var prev_button = event.relatedTarget.id;
-
-    if (cur_button == "widget_button")
-    {
-        activateWidget(true);
-    }
-    else if (prev_button == "widget_button")
-    {
-        activateWidget(false);
-    }
-}
 
 
 //--------------------------------
@@ -398,6 +483,7 @@ function openWebSocket()
 // WEB SOCKET COMMAND HANDLER
 //---------------------------------------------
 
+
 function handleWS(ws_event)
 {
     var do_enable = false;
@@ -483,6 +569,19 @@ function handleWS(ws_event)
             $('#widget_content').html(device_widget.html);
             loadWidgetDependencies();
         }
+
+        // plot
+
+        if (obj.has_plot)
+        {
+            $('#plot_button').addClass('shown');
+        }
+        else
+        {
+            $('#plot_button').removeClass('shown');
+            if (cur_button == 'plot_button')
+                $('#dashboard_button').click();
+        }
     }
 
     // if there are values, then we fill the tables
@@ -518,6 +617,25 @@ function handleWS(ws_event)
         }
         if (obj.upload_error)
             myAlert("There was a server error while uploading");
+    }
+
+    // Plot Data
+
+    if (obj.plot_data)
+    {
+        if (typeof plotData === 'function')
+        {
+            if (cur_button == 'plot_button')
+            {
+                // console.log("plotData(" + obj.plot_data + ")");
+                plotData(obj.plot_data);
+            }
+        }
+        else if (!no_plot_error)
+        {
+            no_plot_error = 1;
+            alert("WS obj.plot exists, but function doPlot() does not!");
+        }
     }
 
     //--------------------------
@@ -577,7 +695,6 @@ function handleWS(ws_event)
     if (do_enable)
         enableControls();
 }
-
 
 
 
@@ -851,6 +968,13 @@ function fillTables(obj)
             $('#dashboard_button').click();
     }
 
+    // Set the state of the Plot ON/OFF button explicitly
+    // since it is not used in the Dashboard/Config/Device normal way
+
+    if (obj.values['PLOT_DATA'])
+        $(".PLOT_DATA").prop("checked",
+            obj.values['PLOT_DATA'].value);
+    
     // Enable tooltips on any controls that have them
 
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -1106,47 +1230,5 @@ function activateWidget(activate)
 
 
 
-//------------------------------------------------
-// startMyIOT()
-//------------------------------------------------
 
 
-function startMyIOT()
-{
-    console.log("startMyIOT()");
-
-    // we identify if this is being served from the rPi
-    // by whether or not the protocol is https or the
-    // port is 8080 (by default my "things" use 80/81)
-
-    is_server =
-        (location.protocol == 'https:') ||
-        (location.port == '8080');
-    if (is_server)
-        $('#DEVICE_NAME').addClass('hidden');
-    else
-        $('#device_list').addClass('hidden');
-
-    // If so, we are going to change the deviceName thing to a pulldown
-    // that contains a list of device, select the first device we find,
-    // and set our websocket context to it, THEN issue the typical
-    // startup (device_info, value_list, and spiffs_list) ws commands
-
-    fake_uuid = 'xxxxxxxx'.replace(/[x]/g, (c) => {
-        const r = Math.floor(Math.random() * 16);
-        return r.toString(16);  });
-
-    openWebSocket();
-
-    setInterval(updateTimers,200);
-        // timer for "time_since" field updating
-
-    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', onTab);
-        // set handler for tab buttons
-
-    // initChart();
-}
-
-
-window.onload = startMyIOT;
-    // and away we go

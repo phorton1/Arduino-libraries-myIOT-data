@@ -11,15 +11,16 @@
 
     <script src="/myIOT/jquery-3.6.0.min.js?cache=1"></script>
     <script src="/myIOT/bootstrap5.1.3.bundle.min.js?cache=1"></script>
+    <script src="/myIOT/iotPlot.js"></script>
+	    <!--script src="/myIOT/iotChart.js"></script -->
     <script src="/myIOT/iotCommon.js"></script>
-    <!--script src="/myIOT/iotChart.js"></script -->
 </head>
 <body>
 
 
 <!-- navbar -->
 
-<nav class="navbar navbar-dark bg-dark">
+<nav id="my_navbar" class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
         <div a class="navbar-brand"> <!- href="#"-->
 			<select id='device_list' onChange='onChangeDevice(event)'>myIOT Demo</select>
@@ -31,6 +32,15 @@
             &nbsp;<span id='device_status' class='small'>&nbsp;</span>
         </div>
         <ul class="nav nav-dark nav-pills" id="my_nav_buttons" role="tablist">
+			<li class="nav-item">
+                <button
+                    class="nav-link my_nav_link hidden"
+                    id="plot_button"
+                    data-bs-toggle="tab"
+                    data-bs-target="#plotter">
+                    Plot
+                </button>
+            </li>
 			<li class="nav-item">
                 <button
                     class="nav-link my_nav_link hidden"
@@ -92,20 +102,49 @@
 
 <!-- content div -->
 
+<style>
+.free_standing_control {
+    display: inline-block;
+    vertical-align: top; /* Align vertically in relation to adjacent elements */
+    font-size: 1.1rem;
+    line-height: 2em; /* Set line height to match the height of the input */
+}
+</style>
+
+
 <div id="my_tab_content" class="tab-content">
+
+    <!-- plotter_tab -->
+
+    <div id="plotter" class="tab-pane fade">
+		<div id="plotter_controls"
+			style="margin-top:6px;margin-left:50px;">
+			<span class="free_standing_control">ON/OFF &nbsp;</span>
+			<div class="form-check form-switch my_switch">
+				<input
+					id="_plot_data"
+					class="PLOT_DATA myiot form-check-input my_switch"
+					name="PLOT_DATA"
+					type="checkbox"
+					onchange="onSwitch(event)"/>
+			</div>
+			&nbsp;&nbsp;&nbsp;&nbsp;
+			<button
+				id="button_clear_plot"
+				height="1.4rem"
+				style="vertical-align:top;line-height: 2em;"
+				onClick="initPlotter()">CLEAR</button>
+		</div>
+		<div id='plotter_content'>
+			<canvas id="plotter_canvas" width="800" height="400"></canvas>
+		</div>
+    </div>
 
     <!-- widget_tab -->
 
     <div id="widget" class="tab-pane fade">
-
-		<!-- THIS IS THE WIDGET -->
-
         <div id='widget_content' width='90%'>
-
-			THIS IS THE WIDGET CONTENT
-			
 		</div>
-
     </div>
 
     <!-- dashboard tab -->

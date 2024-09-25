@@ -324,6 +324,8 @@ function drawPlot()
 
     drawFrame(data_minY, data_maxY, divisor);
 
+    ctx.lineWidth = 1;
+
     for (let i=0; i<num_series; i++)
     {
         if (debug_plot > 1)

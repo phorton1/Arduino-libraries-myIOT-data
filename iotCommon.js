@@ -619,23 +619,17 @@ function handleWS(ws_event)
             myAlert("There was a server error while uploading");
     }
 
-    // Plot Data
+    // Plot Handling
 
+
+    if (obj.plot_legend)
+    {
+        setPlotLegend(obj.plot_legend);
+    }
     if (obj.plot_data)
     {
-        if (typeof plotData === 'function')
-        {
-            if (cur_button == 'plot_button')
-            {
-                // console.log("plotData(" + obj.plot_data + ")");
-                plotData(obj.plot_data);
-            }
-        }
-        else if (!no_plot_error)
-        {
-            no_plot_error = 1;
-            alert("WS obj.plot exists, but function doPlot() does not!");
-        }
+        // console.log("plotData(" + obj.plot_data + ")");
+        plotData(obj.plot_data);
     }
 
     //--------------------------
@@ -968,8 +962,18 @@ function fillTables(obj)
             $('#dashboard_button').click();
     }
 
-    // Set the state of the Plot ON/OFF button explicitly
+    // Add a PLOT_TYPE pulldown if the device defines a PLOT_TYPE value
+    // and Set the state of the Plot ON/OFF button explicitly
     // since it is not used in the Dashboard/Config/Device normal way
+
+    if (obj.values['PLOT_TYPE'])
+    {
+        ele = addSelect(obj.values['PLOT_TYPE']);
+        ele.addClass('plot_type_control');
+        $('#plot_type_span').children().remove();
+        $('#plot_type_span').append(ele);
+    }
+
 
     if (obj.values['PLOT_DATA'])
         $(".PLOT_DATA").prop("checked",

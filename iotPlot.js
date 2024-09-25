@@ -7,7 +7,7 @@
 const plot_Top = 10;                // space allocated for the top of the canvas
 const plot_Left = 65;               // space allocated for the left axis
 const plot_Margin_Right = 2;        // space allocated for the right axis
-const plot_Margin_Bottom = 20;      // space allocated for the bottom axis
+const plot_Margin_Bottom = 30;      // space allocated for the bottom axis (legend)
 
 const seriesColors = [
     'red', 'green', 'blue', 'cyan', 'magenta',
@@ -24,6 +24,8 @@ let plot_curX;
 let plot_maxX;
 let plot_maxY;
 let debug_plot = 0;
+let plot_legend = '';
+let last_legend = '';
 
 
 function initPlotter()
@@ -43,6 +45,12 @@ function initPlotter()
 
     plot_curX = 0;
 
+}
+
+
+function setPlotLegend(legend)
+{
+    plot_legend = legend;
 }
 
 
@@ -80,7 +88,26 @@ function plotData(samples)
     if (debug_plot)
         console.log("plotData[" + plot_curX +"] samples(" + samples + ")");
 
-    setCanvasMax();
+    // when the legend changes, there can be extraneous plot_data's
+    // in the WS pipeline that get displayed against the wrong scale.
+    // Here we do a rudimentary check that the number of samples matches
+    // the number of legend entries, and if not, we bail
+    
+    let legend_parts = plot_legend.split(',');
+    if (samples.length != legend_parts.length)
+        return;
+
+    // and here we handle the legend change
+    // by re-initializing the plotter
+    // or otherwise, we handle any resizing issues
+    
+    if (last_legend != plot_legend)
+    {
+        last_legend = plot_legend;
+        initPlotter();
+    }
+    else
+        setCanvasMax();
 
     const num_samples = samples.length;
     const num_series = dataBuffers.length;
@@ -115,7 +142,11 @@ function plotData(samples)
         }
     }
 
-    drawPlot();
+    // we handle the data continuously, but
+    // only draw the plot if the user is on that tab
+    
+    if (cur_button == 'plot_button')
+        drawPlot();
 }
 
 
@@ -183,6 +214,48 @@ function drawFrame(minY,maxY,divisor)
             draw_position += tick_space;
             draw_value -= divisor;
 
+        }
+    }
+
+    // draw the legend
+
+    if (plot_legend != '')
+    {
+        const box_top = height - plot_Margin_Bottom + 8;
+        const box_bottom = height - plot_Margin_Bottom + 24;
+        const text_baseline = height - plot_Margin_Bottom + 20;
+
+        var xoff = plot_Left + 10;
+        var parts = plot_legend.split(',');
+
+        ctx.font = "12px Arial";
+        ctx.lineWidth = 2;
+
+        for (let i=0; i<parts.length; i++)
+        {
+            // skip constant numbers
+
+            if (isNaN(parts[i]))
+            {
+                ctx.strokeStyle = 'black';
+                ctx.fillStyle = seriesColors[i % seriesColors.length];
+
+                ctx.beginPath();
+                ctx.moveTo(xoff, box_top);
+                ctx.lineTo(xoff+16, box_top);
+                ctx.lineTo(xoff+16, box_bottom);
+                ctx.lineTo(xoff, box_bottom);
+                ctx.lineTo(xoff, box_top);
+                ctx.stroke();
+                ctx.fill();
+
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.fillText(parts[i], xoff + 22, text_baseline);
+                ctx.fill();
+
+                xoff += ctx.measureText(parts[i]).width + 45;
+            }
         }
     }
 }
@@ -283,4 +356,5 @@ function drawPlot()
         if (started)
             ctx.stroke();
     }
+
 }

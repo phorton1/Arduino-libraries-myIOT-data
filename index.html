@@ -103,12 +103,22 @@
 <!-- content div -->
 
 <style>
-.free_standing_control {
+.plot_on_off_control {
     display: inline-block;
     vertical-align: top; /* Align vertically in relation to adjacent elements */
     font-size: 1.1rem;
     line-height: 2em; /* Set line height to match the height of the input */
 }
+.plot_clear_control {
+	vertical-align:top;
+	line-height: 2em;"
+}
+.plot_type_control {
+	vertical-align:top;
+	line-height: 2em;
+	margin-top:4px;
+}  
+
 </style>
 
 
@@ -119,7 +129,7 @@
     <div id="plotter" class="tab-pane fade">
 		<div id="plotter_controls"
 			style="margin-top:6px;margin-left:50px;">
-			<span class="free_standing_control">ON/OFF &nbsp;</span>
+			<span class="plot_on_off_control">ON/OFF &nbsp;</span>
 			<div class="form-check form-switch my_switch">
 				<input
 					id="_plot_data"
@@ -132,8 +142,10 @@
 			<button
 				id="button_clear_plot"
 				height="1.4rem"
-				style="vertical-align:top;line-height: 2em;"
+				class="plot_clear_control"
 				onClick="initPlotter()">CLEAR</button>
+			&nbsp;&nbsp;&nbsp;&nbsp;
+			<span id="plot_type_span"></span>
 		</div>
 		<div id='plotter_content'>
 			<canvas id="plotter_canvas" width="800" height="400"></canvas>

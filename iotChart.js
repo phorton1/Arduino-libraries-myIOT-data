@@ -238,17 +238,22 @@ function create_chart_data(chart_name, abuffer)
 	// As we do this we also set working min and max values on each column.
 {
     const view = new DataView(abuffer);
+	let bytes = view.byteLength;
+	var header = header_by_name[chart_name];
+	var rec_size = 4*(header.num_cols+1);
+	let num_recs = bytes / rec_size;
+
+	if (bytes % rec_size)
+	{
+		console.log("WARNING: NON-INTEGRAL NUMBER OF CHART DATA RECORDS");
+	}
 
 	var offset = 0;
-	const num_recs = view.getUint32(0, true);
-	offset += 4;
-
 	var min_time;
 	var max_time;
 
 	// console.log('num_recs:', num_recs);
 
-	var header = header_by_name[chart_name];
 	var col = header.col;
 
 	var data = [];

@@ -104,6 +104,19 @@ function onResize()
 
     plot_canvas.width = canvas_width;
     plot_canvas.height = canvas_height;
+
+    if (window.onChartResize)
+        onChartResize(width - 30,height - navbar_height - 20);
+
+    if (0)
+    {
+        const tab_content = document.getElementById('my_tab_content');
+        if (tab_content)
+        {
+            tab_content.height = height - navbar_height - 20;
+            tab_content.width = width - 30;
+        }
+    }
 }
 
 

@@ -5,7 +5,28 @@ var use_zoom = true;
 var chart_by_name = {};
 var header_by_name = {};
 var timer_by_name = {};
+var custom_inited = false;
+var err_values = {};
+	// for a moment, assuming all markers drawn from left to right
 
+// Add event listener for window resize
+// window.addEventListener('resize', onChartResize);
+// This is more code that assumes a single chart per page.
+
+function onChartResize(width,height)
+{
+	for (let name in chart_by_name)
+	{
+		var ele = document.getElementById(name + "_chart");
+		ele.style.height = (height - 60) + "px";	// minus controls
+		ele.style.width = width + "px";	// minus controls
+
+		// chart_by_name[name].destroy();
+		chart_by_name[name].replot( { resetAxes: true } );
+
+		// ele.style.height = (height - 60) + "px";	// minus controls
+	}
+}
 
 
 function determineNumTicks(header)
@@ -56,7 +77,7 @@ function determineNumTicks(header)
 
 
 
-function create_chart(chart_name, data, num_recs,secs)
+function create_chart(chart_name, data, secs)
 	// create the chart, deleting old one first
 	// current algorithm determines number of y axis ticks
 	// and min/max for each axis with determineNumTicks()
@@ -81,7 +102,7 @@ function create_chart(chart_name, data, num_recs,secs)
 	var options = {
 
 		title: header.name,
-		seriesDefaults: { showMarker: false, },
+		seriesDefaults: {},
 
 		legend : {
 			renderer: $.jqplot.EnhancedLegendRenderer,
@@ -121,6 +142,11 @@ function create_chart(chart_name, data, num_recs,secs)
 	}
 
 
+	if (header.alt_data_format)
+		options.seriesDefaults['markerRenderer'] = $.jqplot.customMarkerRenderer;
+	else
+		options.seriesDefaults['showMarker'] = false;
+
 	for (var i=0; i<header.num_cols; i++)
 	{
 		var axis_name = 'y';
@@ -139,10 +165,15 @@ function create_chart(chart_name, data, num_recs,secs)
 				// old: col[i].num_ticks or chart_header.num_ticks,
 		};
 		options.series[i] = {
+			showMarker: header.alt_data_format ? i>0 : 0,
+			showLine: !header.alt_data_format || i==0,
 			label: col[i].name,
 			shadow : false,
 			lineWidth: 2,
 		};
+
+		if (header.alt_data_format && i>0)
+			options.series[i].renderer = $.jqplot.customLineRenderer;
 	}
 
 	// scale the values to the 0th axis
@@ -158,9 +189,9 @@ function create_chart(chart_name, data, num_recs,secs)
 			var min = col[i].min;
 			var max = col[i].max;
 			var range = max - min;
-			for (var j=0; j<num_recs; j++)
+			var series = data[i];
+			for (var j=0; j<series.length; j++)
 			{
-				var series = data[i];
 				var rec = series[j];
 				var val = rec[1];
 				val -= min;
@@ -180,7 +211,8 @@ function create_chart(chart_name, data, num_recs,secs)
 	// the most important one (zero=temperature1)
 	// is on top.
 
-	if (true)
+	if ((typeof header.reverse_canvases == undefined) ||
+		header.reverse_canvases)	// true if undefined or 1, false if 0
 	{
 		for (var i=header.num_cols-1; i>=0; i--)
 		{
@@ -227,71 +259,128 @@ function create_chart(chart_name, data, num_recs,secs)
 }
 
 
+
 function create_chart_data(chart_name, abuffer)
-	// Decode the binary data into jqPlot compatible arrays of actual data.\
+	// Decode the binary data into jqPlot compatible arrays of actual data.
 	// and chain to create_chart to show the chart.
 	//
-	// The binary starts with a uin32_t for the number of records, followed
-	// by that number of records consisting of a uint32 timestamp followed
-	// by a nuumber of 32 bit fields of specific types.
+	// By default, these are myIOTDataLog records, where the records start with
+	// uint32 timestamp followed by a nuumber of 32 bit fields of specific types.
+	//
+	// The chart_header can also specify that the series are built from
+	// individual data points for each series, where each item consists of
+	// a uint8_t series index, followed by a uint32_t timestamp, followed
+	// by a field of the j'th column type.
 	//
 	// As we do this we also set working min and max values on each column.
 {
     const view = new DataView(abuffer);
 	let bytes = view.byteLength;
 	var header = header_by_name[chart_name];
-	var rec_size = 4*(header.num_cols+1);
-	let num_recs = bytes / rec_size;
-
-	if (bytes % rec_size)
-	{
-		console.log("WARNING: NON-INTEGRAL NUMBER OF CHART DATA RECORDS");
-	}
-
-	var offset = 0;
-	var min_time;
-	var max_time;
-
-	// console.log('num_recs:', num_recs);
-
 	var col = header.col;
+	var offset = 0;
 
+	err_values = {};
+
+	var min_time = null;
+	var max_time = null;
 	var data = [];
 	for (var i=0; i<header.num_cols; i++)
 	{
 		data[i] = [];
-		col[i]['min'] = 0;
-		col[i]['max'] = 0;
+		col[i]['min'] = null;
+		col[i]['max'] = null;
 	}
 
-	for (var i=0; i<num_recs; i++)
+	if (!header.alt_data_format)
 	{
-		// console.log('   rec[' + i + ']  offset(' + offset + ')');
-		const ts = view.getUint32(offset, true); // true for little-endian
-		offset += 4;
-
-		if (i == 0)
+		var rec_size = 4*(header.num_cols+1);
+		let num_recs = bytes / rec_size;
+		if (bytes % rec_size)
 		{
-			min_time = ts;
-			max_time = ts;
+			console.log("WARNING: NON-INTEGRAL NUMBER OF CHART DATA RECORDS");
 		}
-		else
+
+		// console.log('num_recs:', num_recs);
+
+		for (var i=0; i<num_recs; i++)
 		{
-			if (ts < min_time)
-				min_time = min_time;
-			if (ts > max_time)
+			// console.log('   rec[' + i + ']  offset(' + offset + ')');
+			let ts = view.getUint32(offset, true); // true for little-endian
+			offset += 4;
+
+			if (min_time == null)
+			{
+				min_time = ts;
 				max_time = ts;
+			}
+			else
+			{
+				if (ts < min_time)
+					min_time = min_time;
+				if (ts > max_time)
+					max_time = ts;
+			}
+
+
+			// debugging
+			// const dt = new Date(ts * 1000);
+			// console.log('      dt=' + dt);
+
+			for (var j=0; j<header.num_cols; j++)
+			{
+				let val;
+				let typ = col[j].type;
+				if (typ == 'float')
+					val = view.getFloat32(offset, true);
+				else if (typ == 'int32_t')
+					val = view.getInt32(offset, true);
+				else
+					val = view.getUint32(offset, true);
+				offset += 4;
+
+				if (col[j].min == null)
+				{
+					col[j].min = val;
+					col[j].max = val;
+				}
+				else
+				{
+					if (val < col[j].min) col[j].min = val;
+					if (val > col[j].max) col[j].max = val;
+				}
+
+				// console.log('      off(' + offset + ") " + col[j].name + "(" + typ + ") = " + val);
+
+				data[j].push([ ts * 1000, val]);
+			}
+		}
+	}	// normal data format
+
+	else	// alt_data_format
+	{
+		var item_size = 1 + 1 + 4 + 4;	// uint8_t col_index, uint8_t err_idx, uint32_t ts, and 32 bit column value
+		let num_items = bytes / item_size;
+		if (bytes % item_size)
+		{
+			console.log("WARNING: NON-INTEGRAL NUMBER OF CHART DATA ALT_FORMAT RECORDS");
 		}
 
+		// console.log('num_recs:', num_recs);
 
-		// debugging
-		// const dt = new Date(ts * 1000);
-		// console.log('      dt=' + dt);
-
-		for (var j=0; j<header.num_cols; j++)
+		for (var i=0; i<num_items; i++)
 		{
-			var val;
-			const typ = col[j].type;
+			let col_idx = view.getUint8(offset, true);
+			offset += 1;
+
+			let err_value = view.getUint8(offset, true);
+			offset += 1;
+
+			let ts = view.getUint32(offset, true); // true for little-endian
+			offset += 4;
+
+			let val;
+			let typ = col[col_idx].type;
 			if (typ == 'float')
 				val = view.getFloat32(offset, true);
 			else if (typ == 'int32_t')
@@ -300,24 +389,54 @@ function create_chart_data(chart_name, abuffer)
 				val = view.getUint32(offset, true);
 			offset += 4;
 
-			if (i == 0)
+			if (min_time == null)
 			{
-				col[j].min = val;
-				col[j].max = val;
+				min_time = ts;
+				max_time = ts;
 			}
 			else
 			{
-				if (val < col[j].min) col[j].min = val;
-				if (val > col[j].max) col[j].max = val;
+				if (ts < min_time)
+					min_time = min_time;
+				if (ts > max_time)
+					max_time = ts;
 			}
 
-			// console.log('      off(' + offset + ") " + col[j].name + "(" + typ + ") = " + val);
+			if (col[col_idx].min == null)
+			{
+				col[col_idx].min = val;
+				col[col_idx].max = val;
+			}
+			else
+			{
+				if (val < col[col_idx].min) col[col_idx].min = val;
+				if (val > col[col_idx].max) col[col_idx].max = val;
+			}
 
-			data[j].push([ ts * 1000, val]);
+			if (err_value)
+				err_values[ts * 1000] = err_value;
+			data[col_idx].push([ ts * 1000, val]);
+
+			// not all column min/max will necessarily be
+			// set by this.
+
+		}
+
+		// so we probably need another loop here to set them
+		// to zero and one if not already sete
+
+		for (var i=0; i<header.num_cols; i++)
+		{
+			if (col[i].min == null)
+			{
+				col[i]['min'] = 0;
+				col[i]['max'] = 1;
+			}
 		}
 	}
 
-	create_chart(chart_name, data,num_recs,max_time-min_time);
+
+	create_chart(chart_name, data, max_time-min_time);
 }
 
 
@@ -355,7 +474,10 @@ function get_chart_header(chart_name)
 	{
 		if (this.readyState == 4 && this.status == 200)
 		{
-			header_by_name[chart_name] = JSON.parse(this.responseText);
+			var header = JSON.parse(this.responseText);
+			if (typeof header.alt_data_format == undefined)
+				header.alt_data_format = false;
+			header_by_name[chart_name] = header;
 			get_chart_data(chart_name);
 		}
     }
@@ -366,12 +488,19 @@ function get_chart_header(chart_name)
 
 
 
+
 function doChart(chart_name)
 	// doChart() is called only after the dependencies have been loaded,
 	// when the Widgit tab is activated in the myIOT, or the document
 	// has loaded in temp_chart.htm
 {
 	console.log('doChart(' + chart_name + ') called');
+
+	if (!custom_inited)
+	{
+		custom_inited = true;
+		initJqPlotCustom();
+	}
 
 	stopChart(chart_name);
 
@@ -400,5 +529,97 @@ function stopChart(chart_name)
 		clearTimeout(timer_by_name[chart_name]);
 		delete timer_by_name[chart_name];
 	}
+}
+
+
+//----------------------------------------------------
+// an attempt at a customMarkerRenderer
+//----------------------------------------------------
+// copied from jquery.jqplot.js LineRenderer and MarkerRederer.
+// the problem was that defajlt jqPlot LineRenderer called
+// MarkerRenderer.draw(x, y, ctx, options) without any way
+// to get to a set of characteristics for the marker.
+// X and Y are in it's canvas coordinates, ctx is the
+// canvas 2d context, and options is static.
+//
+// Therefore we overrode both the LineRenderer and MarkerRenderers.
+// Above, when we are processing the 'alt_data_format', which is
+// really the "bilgeAlarm data format" at this point, we created
+// an index, by date-time stamp, of the err_values for each marker.
+// Below, in the customMarkerRenderer.draw() mthod, we get the
+// dt from the plotData for the i'th element, and lookup the
+// error value to determine the color of the marker.
+
+
+function initJqPlotCustom()
+{
+	// define a customLineRenderer that only renders markers
+	// and which calls markerRenderer.draw() with extra 'this' and 'i' parameters
+	// which are paired with the customMarkerRenderer
+
+	$.jqplot.customLineRenderer = function() {};
+	$.jqplot.customLineRenderer.prototype = new $.jqplot.LineRenderer();
+	$.jqplot.customLineRenderer.prototype.constructor = $.jqplot.customLineRenderer;
+
+    $.jqplot.customLineRenderer.prototype.init = function(options, plot) {
+		$.jqplot.LineRenderer.prototype.init.call(this, options, plot); };
+
+	$.jqplot.customLineRenderer.prototype.draw = function(ctx, gd, options, plot) {
+		var i;
+        var opts = $.extend(true, {}, options);
+        ctx.save();
+        if (gd.length) {
+			if (this.markerRenderer.show) {
+                for (i=0; i<gd.length; i++) {
+                    if (gd[i][0] != null && gd[i][1] != null) {
+                        this.markerRenderer.draw(gd[i][0], gd[i][1], ctx, opts.markerOptions, this, i);
+                    }
+                }
+            }
+        }
+        ctx.restore();
+	};
+
+
+	// define a customMarkerRenderer who's draw() method takes this, and val_idx
+	// and uses them to lookup some information about each marker
+
+    $.jqplot.customMarkerRenderer = function(options){
+        this.show = true;
+        this.radius = 4.5;
+        this.color = '#666666';
+        this.shapeRenderer = new $.jqplot.ShapeRenderer();
+        $.extend(true, this, options);
+    };
+
+    $.jqplot.customMarkerRenderer.prototype.init = function(options) {
+        $.extend(true, this, options);
+        this.shapeRenderer.init({fill:true, isarc:true});
+    };
+
+    $.jqplot.customMarkerRenderer.prototype.draw = function(x, y, ctx, options, series, val_idx) {
+        options = options || {};
+        if (options.show == null || options.show != false) {
+
+			// get the datetime associated with the val_idx'th
+			// original series data, and use it to lookup the
+			// associated plotter information, which, in this caae
+			// is the error code associated with each marker.
+
+			var dt = series._plotData[val_idx][0];
+			var err_value = err_values[dt];
+
+			// turn that error code 1..5 into a color
+			// and render a filled circle of that color
+
+			var color =
+				err_value == 5 ? 'red' :
+				err_value > 2 ? 'magenta' : 'orange';
+			options.fillStyle = color;
+
+	        var points = [x, y, this.radius, 0, 2*Math.PI, true];
+	        this.shapeRenderer.draw(ctx, points, options);
+        }
+    };
 }
 

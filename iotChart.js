@@ -260,6 +260,25 @@ function create_chart(chart_name, data, secs)
 
 
 
+
+function getTypedValue(view,offset,typ)
+{
+	let val;
+	if (typ == 'float')
+		val = view.getFloat32(offset, true);
+	else if (typ == 'temperature_t')
+	{
+		val = view.getFloat32(offset, true);
+		if (DEGREE_TYPE)
+			val = centigradeToFarenheit(val);
+	}
+	else if (typ == 'int32_t')
+		val = view.getInt32(offset, true);
+	else
+		val = view.getUint32(offset, true);
+	return val;
+}
+
 function create_chart_data(chart_name, abuffer)
 	// Decode the binary data into jqPlot compatible arrays of actual data.
 	// and chain to create_chart to show the chart.
@@ -292,72 +311,7 @@ function create_chart_data(chart_name, abuffer)
 		col[i]['max'] = null;
 	}
 
-	if (!header.alt_data_format)
-	{
-		var rec_size = 4*(header.num_cols+1);
-		let num_recs = bytes / rec_size;
-		if (bytes % rec_size)
-		{
-			console.log("WARNING: NON-INTEGRAL NUMBER OF CHART DATA RECORDS");
-		}
-
-		// console.log('num_recs:', num_recs);
-
-		for (var i=0; i<num_recs; i++)
-		{
-			// console.log('   rec[' + i + ']  offset(' + offset + ')');
-			let ts = view.getUint32(offset, true); // true for little-endian
-			offset += 4;
-
-			if (min_time == null)
-			{
-				min_time = ts;
-				max_time = ts;
-			}
-			else
-			{
-				if (ts < min_time)
-					min_time = min_time;
-				if (ts > max_time)
-					max_time = ts;
-			}
-
-
-			// debugging
-			// const dt = new Date(ts * 1000);
-			// console.log('      dt=' + dt);
-
-			for (var j=0; j<header.num_cols; j++)
-			{
-				let val;
-				let typ = col[j].type;
-				if (typ == 'float')
-					val = view.getFloat32(offset, true);
-				else if (typ == 'int32_t')
-					val = view.getInt32(offset, true);
-				else
-					val = view.getUint32(offset, true);
-				offset += 4;
-
-				if (col[j].min == null)
-				{
-					col[j].min = val;
-					col[j].max = val;
-				}
-				else
-				{
-					if (val < col[j].min) col[j].min = val;
-					if (val > col[j].max) col[j].max = val;
-				}
-
-				// console.log('      off(' + offset + ") " + col[j].name + "(" + typ + ") = " + val);
-
-				data[j].push([ ts * 1000, val]);
-			}
-		}
-	}	// normal data format
-
-	else	// alt_data_format
+	if (header.alt_data_format)
 	{
 		var item_size = 1 + 1 + 4 + 4;	// uint8_t col_index, uint8_t err_idx, uint32_t ts, and 32 bit column value
 		let num_items = bytes / item_size;
@@ -379,14 +333,7 @@ function create_chart_data(chart_name, abuffer)
 			let ts = view.getUint32(offset, true); // true for little-endian
 			offset += 4;
 
-			let val;
-			let typ = col[col_idx].type;
-			if (typ == 'float')
-				val = view.getFloat32(offset, true);
-			else if (typ == 'int32_t')
-				val = view.getInt32(offset, true);
-			else
-				val = view.getUint32(offset, true);
+			let val = getTypedValue(view,offset,col[col_idx].type);
 			offset += 4;
 
 			if (min_time == null)
@@ -434,7 +381,63 @@ function create_chart_data(chart_name, abuffer)
 			}
 		}
 	}
+	else	// normal data format
+	{
+		var rec_size = 4*(header.num_cols+1);
+		let num_recs = bytes / rec_size;
+		if (bytes % rec_size)
+		{
+			console.log("WARNING: NON-INTEGRAL NUMBER OF CHART DATA RECORDS");
+		}
 
+		// console.log('num_recs:', num_recs);
+
+		for (var i=0; i<num_recs; i++)
+		{
+			// console.log('   rec[' + i + ']  offset(' + offset + ')');
+			let ts = view.getUint32(offset, true); // true for little-endian
+			offset += 4;
+
+			if (min_time == null)
+			{
+				min_time = ts;
+				max_time = ts;
+			}
+			else
+			{
+				if (ts < min_time)
+					min_time = min_time;
+				if (ts > max_time)
+					max_time = ts;
+			}
+
+
+			// debugging
+			// const dt = new Date(ts * 1000);
+			// console.log('      dt=' + dt);
+
+			for (var j=0; j<header.num_cols; j++)
+			{
+				let val = getTypedValue(view,offset,col[j].type);
+				offset += 4;
+
+				if (col[j].min == null)
+				{
+					col[j].min = val;
+					col[j].max = val;
+				}
+				else
+				{
+					if (val < col[j].min) col[j].min = val;
+					if (val > col[j].max) col[j].max = val;
+				}
+
+				// console.log('      off(' + offset + ") " + col[j].name + "(" + typ + ") = " + val);
+
+				data[j].push([ ts * 1000, val]);
+			}
+		}
+	}	// normal data format
 
 	create_chart(chart_name, data, max_time-min_time);
 }

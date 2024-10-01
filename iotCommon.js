@@ -47,6 +47,8 @@ const VALUE_STYLE_LONG       = 0x0020;      // UI will show a long (rather than 
 const VALUE_STYLE_OFF_ZERO   = 0x0040;      // zero is semantically equal to OFF
 const VALUE_STYLE_RETAIN     = 0x0100;      // MQTT if published, will be "retained"
 
+const VALUE_STYLE_TEMPERATURE = 0x0080;     // stored as Centigrade, displayed according to DEGREE_TYPE
+
 
 // program vars
 
@@ -68,6 +70,7 @@ var disabled_classes = "";
 
 var device_widget = '';
 var no_plot_error = 0;
+var DEGREE_TYPE = 0;        // default = centigrade
 
 
 window.onload = startMyIOT;
@@ -266,6 +269,49 @@ function formatSince(tm)
     return pad(hours,2) + ':' + pad(mins,2) + ':' + pad(secs,2);
 }
 
+
+// Some temperatures in the implementation are rounded to 0.1 degrees C,
+// so they show up with 3 digits of precision in the UI, like other float
+// when converted to farenheit. When we convert farenheight to centigrade,
+// for sending in WS set commands, we likewise convert it to 3 digits of
+// precision.
+
+function centigradeToFarenheit(centigrade)
+{
+    var farenheit = (centigrade*9)/5 + 32;
+    return parseFloat(farenheit.toFixed(3));
+}
+
+function farenheitToCentigrade(farenheit)
+{
+    var centigrade = ((farenheit-32)*5)/9;
+    return parseFloat(centigrade.toFixed(3));
+}
+
+
+function onDegreeTypeChanged(value)
+{
+    DEGREE_TYPE = value == 'Farenheit' ? 1 : 0;
+    $('.temperature').each(function () {
+        var ele = $(this);
+        var data_value = ele.attr('data-value');
+        if (ele.is("span"))
+        {
+            if (DEGREE_TYPE)
+                ele.html(centigradeToFarenheit(data_value))
+            else
+                ele.html(data_value);
+        }
+        else
+        {
+            if (DEGREE_TYPE)
+                ele.val(centigradeToFarenheit(data_value))
+            else
+                ele.val(data_value);
+        }
+
+    });
+}
 
 
 //------------------------------------------------
@@ -521,7 +567,7 @@ function handleWS(ws_event)
         $('.' + obj.set).each(function () {
             var ele = $(this);
 
-            // set new value into 'time since' data-value
+            // set new value into 'time since' and temperature's data-value
 
             var data_value = ele.attr('data-value');
             if (typeof(data_value) != 'undefined')
@@ -530,9 +576,16 @@ function handleWS(ws_event)
             // set the value based on the value type
 
             if (ele.is("span"))
-                ele.html(obj.value)
+            {
+                if (ele.hasClass("temperature") && DEGREE_TYPE)
+                    ele.html(centigradeToFarenheit(obj.value))
+                else
+                    ele.html(obj.value);
+            }
             else if (ele.hasClass("my_switch"))
                 ele.prop("checked",obj.value);
+            else if (ele.hasClass("temperature") && DEGREE_TYPE)
+                ele.val(centigradeToFarenheit(obj.value))
             else
                 ele.val(obj.value);
         });
@@ -546,6 +599,13 @@ function handleWS(ws_event)
             do_enable = true;
             $('#device_status').html('rebooting');
         }
+
+        // on change of DEGREE type repopulate all 'temperture' controls
+        // according to their data-value
+        
+        if (obj.set == 'DEGREE_TYPE')
+            onDegreeTypeChanged(obj.value);
+
     }
 
     // device_name is part of device_info, and also used to note the UUID
@@ -786,6 +846,9 @@ function addInput(item)
         (item.style & VALUE_STYLE_PASSWORD) ? 'password' :
         is_number ? "number" :   //  && !(item.style & VALUE_STYLE_OFF_ZERO) ? 'number' :
         'text'
+    var use_value = (item.style & VALUE_STYLE_TEMPERATURE) && DEGREE_TYPE ?
+        centigradeToFarenheit(item.value) :
+        item.value;;
 
     var input = $('<input>')
         .addClass(item.id)
@@ -793,7 +856,7 @@ function addInput(item)
         .attr({
             name : item.id,
             type : input_type,
-            value : item.value,
+            value : use_value,
             onchange : 'onValueChange(event)',
             'data-type' : item.type,
             'data-value' : item.value,
@@ -801,6 +864,8 @@ function addInput(item)
             'data-min' : item.min,
         });
 
+    if (item.style & VALUE_STYLE_TEMPERATURE)
+        input.addClass('temperature');
     if (item.style & VALUE_STYLE_OFF_ZERO)
         input.addClass('off_zero');
 
@@ -854,8 +919,18 @@ function addOutput(item)
         obj.attr({'data-value' : item.value});
         obj.html(formatSince(item.value));
     }
+    else if (item.style & VALUE_STYLE_TEMPERATURE)
+    {
+        obj.addClass('temperature');
+        obj.attr({'data-value' : item.value});
+        if (DEGREE_TYPE)
+            obj.html(centigradeToFarenheit(item.value));
+        else
+            obj.html(item.value);
+    }
     else
         obj.html(item.value);
+    obj.attr({'data-style' : item.style });
     return obj;
 }
 
@@ -911,7 +986,11 @@ function addItem(obj,tbody,item)
         $('<tr />').append(
             $('<td />').text(item.id),
             $('<td />').append(ele) ));
+
+    if (item.id == 'DEGREE_TYPE')
+        DEGREE_TYPE = item.value == 'Farenheit' ? 1 : 0;
 }
+
 
 
 function fillTable(obj,values,ids,tbody)
@@ -1092,9 +1171,17 @@ function onValueChange(evt)
     if (ok)
     {
         if (type == VALUE_TYPE_FLOAT)
-            value = value.toFixed(3);
+        {
+            if (DEGREE_TYPE && style & VALUE_STYLE_TEMPERATURE)
+                value = farenheitToCentigrade(value)
+            else
+                value = value.toFixed(3);
+        }
+
         obj.setAttribute('data-value',value);
         sendCommand("set",{ "id":name, "value":String(value)});
+        if (name == 'DEGREE_TYPE')
+            onDegreeTypeChanged(value);
     }
     else
     {

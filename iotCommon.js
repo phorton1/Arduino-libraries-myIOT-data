@@ -7,13 +7,21 @@ var is_server = 0;
 
 
 // prh - might be useful to have a watchdog that reloads the page every so often
+// 2024-10-05 - experiments with keep_alive scheme;
+//
+//      Apparently the problem is that if a webSocket in the browser closes
+//      unexpectedly, not explicitly from closing the page or browser, but
+//      mysteriously internally, the ESP32 doesn't know about it, and then
+//      hangs trying to broadcast to it. To test this we can try keep_alive_interval==0
+//      which will stop the keep_alive scheme.
 
-const debug_alive = 0;
+var debug_alive = 0;
     // these javascript timers are about 1.6 times faster than advertised on my lenovo with firefox
     // they are tuned to myIOTserver not timing out (it listens)
-const keep_alive_interval = 15000;      // how often to check keep alive
+var keep_alive_interval = 20000;      // how often to check keep alive
+    // set to zero to turn off alive checking for debugging
 const keep_alive_timeout = 5000;        // how long to wait for ping response before considering it dead
-const ws_repoen_delay = 3000;           // how long to wait for re-open (allowing for close) after dead
+const ws_repoen_delay = 10000;           // interval for re-open attempts (allowing for close) after dead
 
 // constants that agree with C++ code
 
@@ -398,7 +406,7 @@ function sendCommand(command,params)
 
 function checkAlive()
 {
-    if (!web_socket || web_socket.opening || web_socket.closing)
+    if (!web_socket || web_socket.opening || web_socket.closing || !keep_alive_interval)
         return;
     if (debug_alive)
         console.log("checkAlive web_socket(" + web_socket.my_id + ")");
@@ -411,8 +419,8 @@ function checkAlive()
         $('#ws_status2').html("WS(" + web_socket.my_id + ") CLOSING");
         web_socket.close();
         if (debug_alive)
-            console.log("checkAlive calling openWebSocket()");
-        openWebSocket();
+            console.log("checkAlive calling setting openWebSocket() timer");
+        alive_timer = setTimeout(openWebSocket,ws_repoen_delay);
     }
     else
     {
@@ -425,8 +433,10 @@ function checkAlive()
 }
 
 function keepAlive()
+    // first timer set on WS opened, henceforth calls itself
+    // need to explicitly call if changng keep_alive_interval from debugger
 {
-    if (!web_socket || !web_socket.alive || web_socket.opening || web_socket.closing)
+    if (!web_socket || !web_socket.alive || web_socket.opening || web_socket.closing || !keep_alive_interval)
         return;
     if (debug_alive)
         console.log("keepAlive web_socket(" + web_socket.my_id + ")");
@@ -507,7 +517,8 @@ function openWebSocket()
         }
         this.alive = 1;
         clearTimeout(alive_timer);
-        alive_timer = setTimeout(keepAlive,keep_alive_interval);
+        if (keep_alive_interval)
+            alive_timer = setTimeout(keepAlive,keep_alive_interval);
 
         // sendCommand("get_chart_data");
     };

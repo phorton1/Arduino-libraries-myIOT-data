@@ -7,6 +7,10 @@
     display:block;
 }
 
+.small {
+    font-size:8pt !important;
+}
+
 /* change the color of bootstrap my "nav-links"
  * so they are blue with a cyan text on hover */
 

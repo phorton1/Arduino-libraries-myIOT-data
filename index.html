@@ -7,7 +7,7 @@
     <title>myIOT</title>
 
     <link href="/myIOT/bootstrap5.1.3.min.css?cache=1" rel="stylesheet">
-    <link href="/myIOT/iotCommon.css?cache=1" rel="stylesheet">
+    <link href="/myIOT/iotCommon.css" rel="stylesheet">
 
     <script src="/myIOT/jquery-3.6.0.min.js?cache=1"></script>
     <script src="/myIOT/bootstrap5.1.3.bundle.min.js?cache=1"></script>
@@ -25,11 +25,9 @@
         <div a class="navbar-brand"> <!- href="#"-->
 			<select id='device_list' onChange='onChangeDevice(event)'>myIOT Demo</select>
 			<span id='DEVICE_NAME' class='navbar-brand' onChange='onChangeDevice(event)'>myIOT Demo</span>
-            &nbsp;<span id='ws_status1' class='small'>&nbsp;</span>
-            &nbsp;&nbsp;&nbsp;&nbsp;
+            <span id='ws_status1' class='small'>&nbsp;</span>
             &nbsp;<span id='ws_status2' class='small'>&nbsp;</span>
-    		&nbsp;&nbsp;&nbsp;&nbsp;
-            &nbsp;<span id='device_status' class='small'>&nbsp;</span>
+    		&nbsp;<span id='device_status' class='small'>&nbsp;</span>
         </div>
         <ul class="nav nav-dark nav-pills" id="my_nav_buttons" role="tablist">
 			<li class="nav-item">

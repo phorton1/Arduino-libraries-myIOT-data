@@ -700,7 +700,16 @@ function handleWS(ws_event)
             in_upload = false;
         }
         if (obj.upload_error)
-            myAlert("There was a server error while uploading");
+        {
+            // we don't use myAlert here because bootstrap does not
+            // support nested modal dialogs.  A simple alert happens,
+            // and then we hide the progress dialog
+
+            alert("Server error(" + obj.upload_error +") while uploading");
+            $('#upload_progress_dlg').modal('hide');
+            in_upload = false;
+
+        }
     }
 
     // Plot Handling

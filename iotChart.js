@@ -9,22 +9,39 @@ var custom_inited = false;
 var err_values = {};
 	// for a moment, assuming all markers drawn from left to right
 
-// Add event listener for window resize
+
+// Resizing functions
 // window.addEventListener('resize', onChartResize);
 // This is more code that assumes a single chart per page.
 
-function onChartResize(width,height)
+function setChartElementSize(name)
+{
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const navbar = document.getElementById('my_navbar');
+    let navbar_height = navbar ? navbar.clientHeight : 46;
+    if (typeof(navbar_height) == 'undefined' ||
+        navbar_height == 0)
+        navbar_height = 46;
+
+    let client_width = width - 30;
+	let client_height = height - navbar_height - 20;
+
+	var ele = document.getElementById(name + "_chart");
+	ele.style.height = (client_height - 60) + "px";	// minus controls
+	ele.style.width = client_width + "px";
+}
+
+
+
+function onChartResize(client_width,client_height)
 {
 	for (let name in chart_by_name)
 	{
 		var ele = document.getElementById(name + "_chart");
-		ele.style.height = (height - 60) + "px";	// minus controls
-		ele.style.width = width + "px";	// minus controls
-
-		// chart_by_name[name].destroy();
+		ele.style.height = (client_height - 60) + "px";	// minus controls
+		ele.style.width = client_width + "px";
 		chart_by_name[name].replot( { resetAxes: true } );
-
-		// ele.style.height = (height - 60) + "px";	// minus controls
 	}
 }
 
@@ -509,6 +526,9 @@ function doChart(chart_name)
 
 	$.jqplot.config.enablePlugins = true;
 		// set jqplot global options gere
+
+	setChartElementSize(chart_name);
+		// resize overly often
 
 	if (!chart_by_name[chart_name])
 	{

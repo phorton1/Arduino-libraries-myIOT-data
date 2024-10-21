@@ -16,29 +16,28 @@ var err_values = {};
 
 function setChartElementSize(name)
 {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const navbar = document.getElementById('my_navbar');
-    let navbar_height = navbar ? navbar.clientHeight : 46;
-    if (typeof(navbar_height) == 'undefined' ||
-        navbar_height == 0)
-        navbar_height = 46;
-
+    let width = window.innerWidth;
+    let height = window.innerHeight;
     let client_width = width - 30;
 	let client_height = height - navbar_height - 20;
 
-	var ele = document.getElementById(name + "_chart");
+	let ele = document.getElementById(name + "_chart");
 	ele.style.height = (client_height - 60) + "px";	// minus controls
 	ele.style.width = client_width + "px";
 }
 
 
 
-function onChartResize(client_width,client_height)
+function onChartResize()
 {
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let client_width = width - 30;
+	let client_height = height - navbar_height - 20;
+
 	for (let name in chart_by_name)
 	{
-		var ele = document.getElementById(name + "_chart");
+		let ele = document.getElementById(name + "_chart");
 		ele.style.height = (client_height - 60) + "px";	// minus controls
 		ele.style.width = client_width + "px";
 		chart_by_name[name].replot( { resetAxes: true } );

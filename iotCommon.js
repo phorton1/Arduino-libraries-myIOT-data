@@ -79,6 +79,7 @@ var disabled_classes = "";
 var device_widget = '';
 var no_plot_error = 0;
 var DEGREE_TYPE = 0;        // default = centigrade
+var navbar_height = 46;
 
 
 window.onload = startMyIOT;
@@ -94,40 +95,13 @@ function onResize()
     // onResize for the widget and the plotter. We have to handle
     // cases where objects are not instantiated or sized yet.
 {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    
-    const navbar = document.getElementById('my_navbar');
-    let navbar_height = navbar ? navbar.clientHeight : 46;
-    if (typeof(navbar_height) == 'undefined' ||
-        navbar_height == 0)
-        navbar_height = 46;
-
-    // resize the plotter canvas with some margins to prevent scrollbars
-
-    const plot_canvas = document.getElementById('plotter_canvas');
-    const plot_control = document.getElementById('plotter_controls');
-    let plot_control_height = plot_control ? plot_control.clientHeight : 42;
-    if (plot_control_height == 0) plot_control_height = 42;
-
-    const canvas_width = width - 30;
-    const canvas_height = height - navbar_height - plot_control_height - 20;
-
-    plot_canvas.width = canvas_width;
-    plot_canvas.height = canvas_height;
-
+    let navbar = document.getElementById('my_navbar');
+    if (navbar && navbar.clientHeight)
+        navbar_height = navbar.clientHeight;
+    if (window.onPlotResize)
+        onPlotResize();
     if (window.onChartResize)
-        onChartResize(width - 30,height - navbar_height - 20);
-
-    if (0)
-    {
-        const tab_content = document.getElementById('my_tab_content');
-        if (tab_content)
-        {
-            tab_content.height = height - navbar_height - 20;
-            tab_content.width = width - 30;
-        }
-    }
+        onChartResize();
 }
 
 

@@ -28,6 +28,26 @@ let plot_legend = '';
 let last_legend = '';
 
 
+function onPlotResize()
+{
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+
+    let plot_canvas = document.getElementById('plotter_canvas');
+    let plot_control = document.getElementById('plotter_controls');
+    let plot_control_height = plot_control ? plot_control.clientHeight : 42;
+    if (plot_control_height == 0) plot_control_height = 42;
+
+    let client_width = width - 30;
+	let client_height = height - navbar_height - plot_control_height - 20;
+
+    plot_canvas.width = client_width;
+    plot_canvas.height = client_height;
+}
+
+
+
+
 function initPlotter()
     // called from iotCommon.js startMyIOT() and
     // the "CLEAR" button in the plot tab controls

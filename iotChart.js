@@ -471,8 +471,9 @@ function get_chart_data(chart_name)
 	var secs = ele ? ele.value : 0;
 
 	var xhr = new XMLHttpRequest();
-	xhr.open('GET', '/custom/chart_data/' + chart_name + "?secs=" + secs, true);
-		// '/custom/chart_data?uuid=%%UUID%%&secs=' + secs, true);
+	xhr.open('GET','/custom/chart_data/' + chart_name +
+		"?secs=" + secs +
+		"&uuid=" + device_uuid, true);
 	xhr.responseType = 'arraybuffer';
 	xhr.onload = function(e)
 	{
@@ -500,7 +501,9 @@ function get_chart_header(chart_name)
 			get_chart_data(chart_name);
 		}
     }
-	xhr_init.open('GET', '/custom/chart_header/' + chart_name, true);
+
+	xhr_init.open('GET','/custom/chart_header/' + chart_name +
+		"?uuid=" + device_uuid,true);
 	xhr_init.send();
 }
 
